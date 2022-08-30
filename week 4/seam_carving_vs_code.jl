@@ -9,6 +9,9 @@ image_urls = [
     "https://wisetoast.com/wp-content/uploads/2015/10/The-Persistence-of-Memory-salvador-deli-painting.jpg"
 ]
 
+#brightness(c::AbstractRGB) = 0.3 * c.r + 0.59 * c.g + 0.11 * c.b
+brightness(c::AbstractRGB) = mean(c.r + c.g + c.b) # turns image into matrix of numbers
+
 function edgeness(img)
 	Sy, Sx = Kernel.sobel()
 	b = brightness.(img)
@@ -153,11 +156,11 @@ function shrink_n(img, n)
 		seam = get_seam_at(dirs, min_j)
 		img = rm_path(img, seam)
 		# Recompute the energy for the new image
-		# Note, this currently involves rerunning the convolution
-		# on the whole image, but in principle the only values that
-		# need recomputation are those adjacent to the seam, so there
-		# is room for a meanintful speedup here.
-    #		e = edgeness(img)
+			# Note, this currently involves rerunning the convolution
+			# on the whole image, but in principle the only values that
+			# need recomputation are those adjacent to the seam, so there
+			# is room for a meanintful speedup here.
+			# e = edgeness(img)
 		e = rm_path(e, seam)
 
  		push!(imgs, img)
@@ -165,12 +168,11 @@ function shrink_n(img, n)
     return imgs
 end
 
-#brightness(c::AbstractRGB) = 0.3 * c.r + 0.59 * c.g + 0.11 * c.b
-brightness(c::AbstractRGB) = mean(c.r + c.g + c.b) # turns image into matrix of numbers
+
 
 image_url = image_urls[1]
 img = load(download(image_url))
 
 
 imgs = shrink_n(img, 200)
-imgs[200]
+imgs[189]
