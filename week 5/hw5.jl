@@ -13,50 +13,50 @@ using LinearAlgebra
 # ╔═╡ 6f4274b5-87e2-420d-83d2-83a8408650cd
 # edit the code below to set your name and kerberos ID (i.e. email without @mit.edu)
 
-student = (name = "Jazzy Doe", kerberos_id = "jazz")
+student = (name = "John Paul", kerberos_id = "idk")
 
 # you might need to wait until all other cells in this notebook have completed running. 
 # scroll around the page to see what's up
 
-# ╔═╡ ea28bf57-ba62-41ce-8be6-d38ca2c5caa3
-
+# ╔═╡ 66eeffb0-2a71-429c-a5ca-3da9a91ac133
+aa = [j for j=1:1000 if j*(1/j) ≠ 1]
 
 # ╔═╡ 8efcaaeb-4900-404b-ae59-65db0bde8790
-
+ab = 49 * (1/49)
 
 # ╔═╡ a5be0775-68de-41ce-95cd-1465723d099b
-
+ac = 1 - ab
 
 # ╔═╡ 4abec609-09cd-4f86-8d86-a7d02325cc7b
-
+ad = log2(ac)
 
 # ╔═╡ 32e073bb-943f-4fa9-b15f-5ec18feecf15
-
+"$ad"
 
 # ╔═╡ d221c61c-a4ab-4a82-b89d-52735d957cae
-
+ae = 32 * 23 - 736
 
 # ╔═╡ c3d49b98-a9c1-4aba-becc-7fa84f4bbc75
-
+af = 3.2 * 23 - 73.6
 
 # ╔═╡ 7b33c09c-2ef2-4b97-b5a5-5fdf9268f76b
-
+ag = 3.2 * 2.3 - 7.36
 
 # ╔═╡ 615b88b6-8505-11eb-0a7c-294ee5ae7474
 begin
 	struct FirstRankOneMatrix
-		# Your code here
-		v::Vector{Float64}
-		w::Vector{Float64}
+		v::Vector
+		w::Vector
 	end
 	
 	# Add the extra constructor here
+	
 	FirstRankOneMatrix(v) = FirstRankOneMatrix(v, v)
 
 end
 
 # ╔═╡ b0db7388-850c-11eb-0915-597f1fa5ab93
-ten_twelve = missing # Your code here
+ten_twelve = FirstRankOneMatrix(collect(1:10), collect(1:12))
 
 # ╔═╡ 2dfc2ef9-3efa-4b82-960f-f2ef0171e9eb
 sqrt === Base.sqrt
@@ -70,13 +70,13 @@ filter === Base.filter
 # ╔═╡ fada4734-8505-11eb-3f2b-d1f1ef391ba4
 function Base.size(M::FirstRankOneMatrix)
 	
-	return missing # Your code here
+	return (length(M.v), length(M.w))
 end
 
 # ╔═╡ 590dfe1a-8506-11eb-0069-d7cd91f02a65
 function Base.getindex(M::FirstRankOneMatrix, i, j)
-	
-	return missing # Your code here
+
+	return M.v[i] * M.w[j]
 end
 
 # ╔═╡ 941b6b10-8ae9-11eb-3bf8-b732f5f60af3
@@ -85,17 +85,8 @@ ten_twelve
 # ╔═╡ a243a400-8af3-11eb-0637-cf8f80aae86d
 ones(10, 12) # An example matrix (two-dimensional array)
 
-# ╔═╡ c7a15c5e-8505-11eb-3af2-2fa84b74b590
-function print_as_matrix(M::FirstRankOneMatrix)
-	
-	# Your code here
-	
-end
-
-# ╔═╡ b0a0b9a4-850b-11eb-30f1-11f5270efe02
-with_terminal() do
-	print_as_matrix(ten_twelve)
-end
+# ╔═╡ 764e3678-fd71-4a74-b2f6-fb25fa452f48
+type
 
 # ╔═╡ b577420c-8501-11eb-267a-719125315fe1
 begin
@@ -104,34 +95,34 @@ begin
 		w::AbstractVector{T}
 	end
 	
-	# Add the two extra constructors
-	# (Should we make these missing by default? if so - remove hint below)
+	RankOneMatrix(x, y) = RankOneMatrix(collect(x), collect(y))
+	RankOneMatrix(x) = RankOneMatrix(collect(x), collect(x))
 	RankOneMatrix(v) = RankOneMatrix(v, v)
 end
 
 # ╔═╡ eb612772-8b06-44bb-a36a-827435cbb2ee
-
+RankOneMatrix(1:10)
 
 # ╔═╡ d3e7c8d1-4b4a-47b6-9c96-150333078f42
-
+RankOneMatrix(1:10, 1:12)
 
 # ╔═╡ f2d8b45c-8501-11eb-1c6a-5f819c240d9d
 function Base.size(M::RankOneMatrix)
 	
-	return missing # Your code here
+	return (length(M.v), length(M.w))
 end
 
 # ╔═╡ ed72e880-8afa-11eb-3a4a-175a838188d9
 function Base.getindex(M::RankOneMatrix, i, j)
 	
-	return missing # Your code here
+	return M.v[i] * M.w[j]
 end
 
 # ╔═╡ 7b3fb0ef-9a9e-401c-8c09-e5615134a4ad
-R2 = RankOneMatrix([1,2], [3,4,5])
+R2 = RankOneMatrix([1,2,3], [3,4,5])
 
 # ╔═╡ fc962c72-8501-11eb-2821-cbb7a52d5f61
-M = RankOneMatrix(1:10) # missing # Your code here
+M = RankOneMatrix(1:10)
 
 # ╔═╡ 0887ee78-0e8a-41c7-90e7-44237acc1477
 collect(M)
@@ -446,6 +437,26 @@ size === Base.size
 
 # ╔═╡ 0b7c6cbe-57de-419d-adcb-8724791f9c89
 Base.size(ten_twelve)
+
+# ╔═╡ c7a15c5e-8505-11eb-3af2-2fa84b74b590
+function print_as_matrix(M::FirstRankOneMatrix)
+	m, n = size(M)
+	println(length(M.v), "×", length(M.w), " ", "FirstRankOneMatrix:")
+
+	for i in 1:m
+		for j in 1:n
+		print(lpad(M.v[i] * M.w[j], 3))
+		print(" ")
+		end
+		println()
+	end
+	
+end
+
+# ╔═╡ b0a0b9a4-850b-11eb-30f1-11f5270efe02
+with_terminal() do
+	print_as_matrix(ten_twelve)
+end
 
 # ╔═╡ 52451232-2c3d-4425-a94a-da1a955cf784
 Base.size(R2)
@@ -1349,7 +1360,7 @@ version = "17.4.0+0"
 # ╠═8c8388cf-9891-423c-8db2-d40d870bb38e
 # ╟─4ce0e43d-63d6-4cb2-88b8-8ba80e17012a
 # ╟─ac35c6b3-a142-4b7a-921b-a2bfe1d84713
-# ╠═ea28bf57-ba62-41ce-8be6-d38ca2c5caa3
+# ╠═66eeffb0-2a71-429c-a5ca-3da9a91ac133
 # ╟─a759c4d5-ca00-4dda-b39c-1093ba9bef0e
 # ╟─a5901f93-007f-4a30-97fc-29b367ec47c6
 # ╠═8efcaaeb-4900-404b-ae59-65db0bde8790
@@ -1367,7 +1378,7 @@ version = "17.4.0+0"
 # ╟─e9a53ca0-86f2-11eb-2970-5d0996d1603e
 # ╟─9f534aa0-8505-11eb-3476-4d326fb19d42
 # ╠═b0db7388-850c-11eb-0915-597f1fa5ab93
-# ╟─30e5a813-9ea1-48d9-9039-012b8b267256
+# ╠═30e5a813-9ea1-48d9-9039-012b8b267256
 # ╟─7aac43b3-49ce-46ea-854b-d292ac0591c7
 # ╠═2dfc2ef9-3efa-4b82-960f-f2ef0171e9eb
 # ╠═ead4c008-0e7e-4414-aced-d4a576423bd3
@@ -1389,9 +1400,10 @@ version = "17.4.0+0"
 # ╠═a243a400-8af3-11eb-0637-cf8f80aae86d
 # ╟─4e926bfe-8734-11eb-1355-e1d1d9b36929
 # ╠═c7a15c5e-8505-11eb-3af2-2fa84b74b590
+# ╠═764e3678-fd71-4a74-b2f6-fb25fa452f48
 # ╟─9eb846c0-8737-11eb-101b-0191f715d8c9
 # ╠═b0a0b9a4-850b-11eb-30f1-11f5270efe02
-# ╟─cd02acd0-8af4-11eb-3726-d7a360b98433
+# ╠═cd02acd0-8af4-11eb-3726-d7a360b98433
 # ╟─5e85ac82-8734-11eb-2f69-cda569326f68
 # ╟─a75f3c76-8506-11eb-1d83-cf5781b656a3
 # ╠═b577420c-8501-11eb-267a-719125315fe1

@@ -26,7 +26,7 @@ end
 # ╔═╡ 33e43c7c-f381-11ea-3abc-c942327456b1
 # edit the code below to set your name and kerberos ID (i.e. email without @mit.edu)
 
-student = (name = "Jazzy Doe", kerberos_id = "jazz")
+student = (name = "John Paul", kerberos_id = "idk")
 
 # you might need to wait until all other cells in this notebook have completed running. 
 # scroll around the page to see what's up
@@ -368,17 +368,28 @@ Return these two values in a tuple.
 """
 
 # ╔═╡ 8ec27ef8-f320-11ea-2573-c97b7b908cb7
-## returns lowest possible sum energy at pixel (i, j), and the column to jump to in row i+1.
 function least_energy(energies, i, j)
 	m, n = size(energies)
 	
-	## base case
-	# if i == something
-	#    return (energies[...], ...) # no need for recursive computation in the base case!
-	# end
+	if i == m
+		return (energies[m, j], j)
+	end
 	
-	## induction
-	# combine results from recursive calls to `least_energy`.
+	j_min, j_max = max(1, j-1), min(j+1, n)
+    min_e = 999
+    column = 0
+    
+    max_min_e = energies[i, j]
+
+    for k in j_min:j_max
+        if least_energy(energies, i+1, k)[1] < min_e
+            min_e = least_energy(energies, i+1, k)[1]
+            column = k
+        end
+    end
+
+    max_min_e += min_e
+    return (max_min_e, column)
 end
 
 # ╔═╡ ad524df7-29e2-4f0d-ad72-8ecdd57e4f02
@@ -420,8 +431,16 @@ This will give you the method used in the lecture to perform [exhaustive search 
 # ╔═╡ 85033040-f372-11ea-2c31-bb3147de3c0d
 function recursive_seam(energies, starting_pixel)
 	m, n = size(energies)
-	# Replace the following line with your code.
-	[rand(1:starting_pixel) for i=1:m]
+
+	i = 1
+	j = starting_pixel
+	seam = [j]
+	while length(seam) != m
+		j = least_energy(energies, i, j)[2]
+		i = i + 1
+		push!(seam, j)
+	end
+	return seam
 end
 
 # ╔═╡ f92ac3e4-fa70-4bcf-bc50-a36792a8baaa
@@ -431,6 +450,9 @@ We won't use this function to shrink our larger image, because it is too ineffic
 
 # ╔═╡ 7ac5eb8d-9dba-4700-8f3a-1e0b2addc740
 recursive_seam_test = recursive_seam(grant_example, 4)
+
+# ╔═╡ 12ca8ae8-c3e8-4e93-902b-acc1c4c1e0c5
+grant_example_optimal_seam
 
 # ╔═╡ c572f6ce-f372-11ea-3c9a-e3a21384edca
 md"""
@@ -442,7 +464,7 @@ md"""
 
 # ╔═╡ 6d993a5c-f373-11ea-0dde-c94e3bbd1552
 exhaustive_observation = md"""
-<your answer here>
+by a factor of n^3
 """
 
 # ╔═╡ ea417c2a-f373-11ea-3bb0-b1b5754f2fac
@@ -478,10 +500,36 @@ You are expected to read and understand the [documentation on dictionaries](http
 # ╔═╡ b1d09bc8-f320-11ea-26bb-0101c9a204e2
 function memoized_least_energy(energies, i, j, memory::Dict)
 	m, n = size(energies)
-	
-	# you should start by copying the code from 
-	# your (not-memoized) least_energies function.
-	
+	dict = memory
+
+	if i == m
+		return (energies[m, j], j)
+	end
+
+    if haskey(dict, (i, j))
+        return dict[(i, j)]
+    else
+		j_min, j_max = max(1, j-1), min(j+1, n)
+    	min_e = 999
+    	column = 0
+	    max_min_e = energies[i, j]
+        for k in j_min:j_max
+            if haskey(dict, (i+1, k))
+                if dict[(i+1, k)][1] < min_e
+                    min_e = dict[(i+1, k)][1]
+                    column = k
+                end
+            else
+                if memoized_least_energy(energies, i+1, k, dict)[1] < min_e
+                    min_e = memoized_least_energy(energies, i+1, k, dict)[1]
+                    column = k
+                end
+            end
+        end
+        max_min_e += min_e 
+        push!(dict, (i, j)=>(max_min_e, column))
+        return (max_min_e, column)
+    end
 end
 
 # ╔═╡ 1947f304-fa2c-4019-8584-01ef44ef2859
@@ -499,18 +547,22 @@ end
 
 # ╔═╡ 3e8b0868-f3bd-11ea-0c15-011bbd6ac051
 function memoized_recursive_seam(energies, starting_pixel)
-	# we set up the the _memory_: note the key type (Tuple{Int,Int}) and
-	# the value type (Tuple{Float64,Int}). 
-	# If you need to memoize something else, you can just use Dict() without types.
-	memory = Dict{Tuple{Int,Int},Tuple{Float64,Int}}()
-	
 	m, n = size(energies)
-	
-	# Replace the following line with your code.
-	
-	# you should start by copying the code from 
-	# your (not-memoized) recursive_seam function.
+	memory = Dict{Tuple{Int,Int},Tuple{Float64,Int}}()
+
+	i = 1
+	j = starting_pixel
+	seam = [j]
+	while length(seam) != m
+		j = memoized_least_energy(energies, i, j, memory)[2]
+		i = i + 1
+		push!(seam, j)
+	end
+	return seam
 end
+
+# ╔═╡ b23f518c-7fec-4e30-b83b-0beaa5898aba
+memoized_least_energy(grant_example, 1, 4, Dict())
 
 # ╔═╡ d941c199-ed77-47dd-8b5a-e34b864f9a79
 memoized_recursive_seam(grant_example, 4)
@@ -532,24 +584,52 @@ But in our particular case, we can use a matrix as a storage, since a matrix is 
 # ╔═╡ c8724b5e-f3bd-11ea-0034-b92af21ca12d
 function matrix_memoized_least_energy(energies, i, j, memory::Matrix)
 	m, n = size(energies)
+	matrix = memory
+
+	if i == m
+		return (energies[m, j], j)
+	end
 	
-	# Replace the following line with your code.
+    if matrix[i, j] != nothing
+        return matrix[i, j]
+    else
+		j_min, j_max = max(1, j-1), min(j+1, n)
+	    min_e = 999
+	    column = 0
+	    max_min_e = energies[i, j]
+        for j₁ in j_min:j_max
+            if matrix[i+1, j₁] != nothing
+                if matrix[i+1, j₁][1] < min_e
+                    min_e = matrix[i+1, j₁][1]
+                    column = j₁
+                end
+            else
+                if matrix_memoized_least_energy(energies, i+1, j₁, matrix)[1] < min_e
+                    min_e = matrix_memoized_least_energy(energies, i+1, j₁, matrix)[1]
+                    column = j₁
+                end
+            end
+        end
+        max_min_e += min_e 
+		matrix[i, j] = (max_min_e, column)
+        return (max_min_e, column)
+    end
 end
 
 # ╔═╡ be7d40e2-f320-11ea-1b56-dff2a0a16e8d
 function matrix_memoized_seam(energies, starting_pixel)
+    m, n = size(energies)
 	memory = Matrix{Union{Nothing,Tuple{Float64,Int}}}(nothing, size(energies))
-
-	# use me instead of you use a different element type:
-	# memory = Matrix{Any}(nothing, size(energies))
 	
-	
-	m, n = size(energies)
-	
-	# Replace the following line with your code.
-	[starting_pixel for i=1:m]
-	
-	
+	i = 1
+	j = starting_pixel
+	seam = [j]
+	while length(seam) != m
+		j = matrix_memoized_least_energy(energies, i, j, memory)[2]
+		i = i + 1
+		push!(seam, j)
+	end
+	return seam
 end
 
 # ╔═╡ 507f3870-f3c5-11ea-11f6-ada3bb087634
@@ -572,20 +652,34 @@ Now it's easy to see that the above algorithm is equivalent to one that populate
 
 # ╔═╡ ff055726-f320-11ea-32f6-2bf38d7dd310
 function least_energy_matrix(energies)
-	result = copy(energies)
+	min_energy_matrix = copy(energies)
+	direction_matrix = zeros(size(energies))
 	m, n = size(energies)
+
+	min_energy_matrix[m, :] .= energies[m, :]
 	
-	# your code here
+	for i in (m-1):(-1):1
+		for j in 1:n
+			j_min, j_max = max(1, j-1), min(j+1, n) # boundary conditions
+			
+			min_energy, direction = findmin(min_energy_matrix[i+1, j_min:j_max])
+			
+			min_energy_matrix[i, j] += energies[i, j] + min_energy
+			direction_matrix[i, j] = (-1, 0, 1)[direction + (j==1)]
+		end
+	end
 	
-	
-	return result
+	return min_energy_matrix, direction_matrix
 end
 
-# ╔═╡ d3e69cf6-61b1-42fc-9abd-42d1ae7d61b2
-img_brightness = brightness.(img);
+# ╔═╡ 6e51e6c7-7ca8-447a-b9b5-618bd1e653b0
+img_brightness = brightness.(img)
 
 # ╔═╡ 51731519-1831-46a3-a599-d6fc2f7e4224
 le_test = least_energy_matrix(img_brightness)
+
+# ╔═╡ e2fa9a8c-449b-4202-9c1b-c91f65442014
+
 
 # ╔═╡ e06d4e4a-146c-4dbd-b742-317f638a3bd8
 spooky(A::Matrix{<:Real}) = map(sqrt.(A ./ maximum(A))) do x
@@ -593,7 +687,7 @@ spooky(A::Matrix{<:Real}) = map(sqrt.(A ./ maximum(A))) do x
 end
 
 # ╔═╡ 99efaf6a-0109-4b16-89b8-f8149b6b69c2
-spooky(le_test)
+spooky(le_test[1])
 
 # ╔═╡ 92e19f22-f37b-11ea-25f7-e321337e375e
 md"""
@@ -603,13 +697,16 @@ md"""
 """
 
 # ╔═╡ 795eb2c4-f37b-11ea-01e1-1dbac3c80c13
-function seam_from_precomputed_least_energy(energies, starting_pixel::Int)
-	least_energies = least_energy_matrix(energies)
-	m, n = size(least_energies)
+function seam_from_precomputed_least_energy(direction, starting_pixel::Int)
+	m = size(direction, 1)
+	column_index = fill(0, m)
+	column_index[1] = starting_pixel
 	
 	# Replace the following line with your code.
-	[starting_pixel for i=1:m]
-	
+	for i in 2:m
+		column_index[i] = column_index[i-1] + direction[i-1, column_index[i-1]]
+	end
+	return column_index
 end
 
 # ╔═╡ 51df0c98-f3c5-11ea-25b8-af41dc182bac
@@ -858,7 +955,7 @@ end
 # ╔═╡ e0622780-f3b4-11ea-1f44-59fb9c5d2ebd
 if !@isdefined(least_energy_matrix)
 	not_defined(:least_energy_matrix)
-elseif !(le_test isa Matrix{<:Real})
+elseif !(le_test[1] isa Matrix{<:Real})
 	keep_working(md"`least_energy_matrix` should return a 2D array of Float64 values.")
 end
 
@@ -1830,7 +1927,7 @@ version = "17.4.0+0"
 # ╠═ab276048-f34b-42dd-b6bf-0b83c6d99e6a
 # ╠═0d144802-f319-11ea-0028-cd97a776a3d0
 # ╟─a5271c38-ba45-416b-94a4-ba608c25b897
-# ╟─365349c7-458b-4a6d-b067-5112cb3d091f
+# ╠═365349c7-458b-4a6d-b067-5112cb3d091f
 # ╟─b49e8cc8-f381-11ea-1056-91668ac6ae4e
 # ╠═90a22cc6-f327-11ea-1484-7fda90283797
 # ╠═5370bf57-1341-4926-b012-ba58780217b1
@@ -1893,9 +1990,10 @@ version = "17.4.0+0"
 # ╠═85033040-f372-11ea-2c31-bb3147de3c0d
 # ╟─f92ac3e4-fa70-4bcf-bc50-a36792a8baaa
 # ╠═7ac5eb8d-9dba-4700-8f3a-1e0b2addc740
+# ╠═12ca8ae8-c3e8-4e93-902b-acc1c4c1e0c5
 # ╠═9ff0ce41-327f-4bf0-958d-309cd0c0b6e5
 # ╟─c572f6ce-f372-11ea-3c9a-e3a21384edca
-# ╠═6d993a5c-f373-11ea-0dde-c94e3bbd1552
+# ╟─6d993a5c-f373-11ea-0dde-c94e3bbd1552
 # ╟─ea417c2a-f373-11ea-3bb0-b1b5754f2fac
 # ╟─56a7f954-f374-11ea-0391-f79b75195f4d
 # ╠═b1d09bc8-f320-11ea-26bb-0101c9a204e2
@@ -1904,6 +2002,7 @@ version = "17.4.0+0"
 # ╠═b387f8e8-dced-473a-9434-5334829ecfd1
 # ╟─344964a8-7c6b-4720-a624-47b03483263b
 # ╠═3e8b0868-f3bd-11ea-0c15-011bbd6ac051
+# ╠═b23f518c-7fec-4e30-b83b-0beaa5898aba
 # ╠═d941c199-ed77-47dd-8b5a-e34b864f9a79
 # ╠═726280f0-682f-4b05-bf5a-688554a96287
 # ╟─c1ab3d5f-8e6c-4702-ad40-6c7f787f1c43
@@ -1921,9 +2020,10 @@ version = "17.4.0+0"
 # ╟─24792456-f37b-11ea-07b2-4f4c8caea633
 # ╠═ff055726-f320-11ea-32f6-2bf38d7dd310
 # ╟─e0622780-f3b4-11ea-1f44-59fb9c5d2ebd
+# ╠═6e51e6c7-7ca8-447a-b9b5-618bd1e653b0
 # ╠═51731519-1831-46a3-a599-d6fc2f7e4224
 # ╠═99efaf6a-0109-4b16-89b8-f8149b6b69c2
-# ╠═d3e69cf6-61b1-42fc-9abd-42d1ae7d61b2
+# ╠═e2fa9a8c-449b-4202-9c1b-c91f65442014
 # ╟─e06d4e4a-146c-4dbd-b742-317f638a3bd8
 # ╟─92e19f22-f37b-11ea-25f7-e321337e375e
 # ╠═795eb2c4-f37b-11ea-01e1-1dbac3c80c13

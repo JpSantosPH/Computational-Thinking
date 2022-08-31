@@ -275,12 +275,6 @@ $(html"<br>")
 👉 Which letters from the alphabet did not occur in the sample?
 """
 
-# ╔═╡ cdc8a77d-b40f-44d5-85d6-4ee678123b08
-unused_letter(sample_freqs)
-
-# ╔═╡ 59aafc89-59c0-4d47-890f-a42c8f38b956
-
-
 # ╔═╡ 92bf9fd2-f9a5-11ea-25c7-5966e44db6c6
 unused_letters = ['j', 'q', 'z'] # replace with your answer
 
@@ -1666,8 +1660,6 @@ version = "17.4.0+0"
 # ╟─b3de6260-f9a4-11ea-1bae-9153a92c3fe5
 # ╠═a6c36bd6-f9a4-11ea-1aba-f75cecc90320
 # ╟─6d3f9dae-f9a5-11ea-3228-d147435e266d
-# ╠═cdc8a77d-b40f-44d5-85d6-4ee678123b08
-# ╠═59aafc89-59c0-4d47-890f-a42c8f38b956
 # ╠═92bf9fd2-f9a5-11ea-25c7-5966e44db6c6
 # ╟─95b81778-f9a5-11ea-3f51-019430bc8fa8
 # ╟─7df7ab82-f9ad-11ea-2243-21685d660d71
