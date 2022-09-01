@@ -50,13 +50,14 @@ begin
 	end
 	
 	# Add the extra constructor here
-	
+	FirstRankOneMatrix(x::AbstractRange, y::AbstractRange) = FirstRankOneMatrix(collect(x), collect(y))
+	FirstRankOneMatrix(x::AbstractRange) = FirstRankOneMatrix(collect(x), collect(x))
 	FirstRankOneMatrix(v) = FirstRankOneMatrix(v, v)
 
 end
 
 # ╔═╡ b0db7388-850c-11eb-0915-597f1fa5ab93
-ten_twelve = FirstRankOneMatrix(collect(1:10), collect(1:12))
+ten_twelve = FirstRankOneMatrix(1:10, 1:12)
 
 # ╔═╡ 2dfc2ef9-3efa-4b82-960f-f2ef0171e9eb
 sqrt === Base.sqrt
@@ -95,9 +96,9 @@ begin
 		w::AbstractVector{T}
 	end
 	
-	RankOneMatrix(x, y) = RankOneMatrix(collect(x), collect(y))
-	RankOneMatrix(x) = RankOneMatrix(collect(x), collect(x))
-	RankOneMatrix(v) = RankOneMatrix(v, v)
+	RankOneMatrix(x::AbstractRange, y::AbstractRange) = RankOneMatrix(collect(x), collect(y))
+	RankOneMatrix(x::AbstractRange) = RankOneMatrix(collect(x), collect(x))
+	RankOneMatrix(v::AbstractVector) = RankOneMatrix(v, v)
 end
 
 # ╔═╡ eb612772-8b06-44bb-a36a-827435cbb2ee
@@ -131,40 +132,57 @@ collect(M)
 typeof(collect(M))
 
 # ╔═╡ ee58251a-8511-11eb-074c-5b1e27c4ebd4
-function matvec(M::RankOneMatrix, x)
+function matvec(M::RankOneMatrix, x::AbstractVector)
 	
-	return missing # Your code here
+	return (M.w ⋅ x) .* M.v
 end
 
 # ╔═╡ ba3cb45a-8502-11eb-2141-6369b0e08807
 begin
 	struct RankTwoMatrix{T} <: AbstractMatrix{T}
-		# Your code here
 		A::RankOneMatrix{T}
 		B::RankOneMatrix{T}
 	end
 	
-	# Add a constructor that uses two vectors/ranges
-	RankTwoMatrix(v1, v2) = RankTwoMatrix(RankOneMatrix(v1), RankOneMatrix(v2))
+	
+
+	RankTwoMatrix(r1::AbstractRange, r2::AbstractRange) = RankTwoMatrix(RankOneMatrix(r1), RankOneMatrix(r2))
+	RankTwoMatrix(v1::AbstractVector, v2::AbstractVector) = RankTwoMatrix(RankOneMatrix(v1), RankOneMatrix(v2))
 end
 
-# ╔═╡ f5a95dd8-850d-11eb-2aa7-2dcb1868577f
+# ╔═╡ 7a3b9b39-e709-4eeb-b0c2-91ce3a2a46a9
+RankTwoMatrix(1.0:10.0, 0.0:0.1:0.9)
 
+# ╔═╡ 200486d6-2324-4776-9eb0-57351c4aacfe
+AA = RankOneMatrix(0.0:0.1:0.9)
+
+# ╔═╡ 01a55f47-5b71-48b4-874f-65a814f13e16
+AB = RankOneMatrix(1:10)
+
+# ╔═╡ f00982f4-f2a9-4c49-8b23-dbbf1fbd993e
+RankTwoMatrix(RankOneMatrix(collect(1.0:10.0)), RankOneMatrix(collect(1.0:10.0)))
+
+# ╔═╡ cd6b0bf9-4453-432f-8973-3d6b2de8e6d2
+typeof(0.0:0.1:0.9)
 
 # ╔═╡ c784e02c-8502-11eb-3efa-7f4c45f4274c
 function Base.getindex(M::RankTwoMatrix, i, j)
 
-	return missing # Your code here
+	return M.A[i, j] + M.B[i, j]
 end
 
 # ╔═╡ 0bab818e-8503-11eb-02b3-178098599847
 function Base.size(M::RankTwoMatrix)
-	
-	return missing # Your code here
+	if size(M.A) == size(M.B)
+	return size(M.A)
+	end
 end
 
+# ╔═╡ 54e73e50-8adb-4518-8d1d-a27a75518f47
+AA[3, 3] + AA[3, 3]
+
 # ╔═╡ b6717812-8503-11eb-2729-39bfdc1fd2f9
-struct LowRankMatrix <: AbstractMatrix{Float64}
+struct LowRankMatrix <: AbstractMatrix{T}
 	# Your code here
 	Ms::Vector{RankOneMatrix}
 	rank::Int
@@ -172,8 +190,11 @@ end
 
 # ╔═╡ c49e350e-8503-11eb-15de-7308dd03dc08
 function Base.getindex(M::LowRankMatrix, i, j)
-	
-	return missing # Your code here
+	M_index = 0
+	for k in 1:M.rank
+		M_index += M.Ms[k][i, j]
+	end
+	return M_index
 end
 
 # ╔═╡ eadb174e-2c1d-48c8-9de2-99cdc2b38d32
@@ -428,8 +449,8 @@ md"""
 
 # ╔═╡ dd27f508-8503-11eb-36b9-33f5f99f78b0
 function Base.size(M::LowRankMatrix)
-	
-	return missing # Your code here
+
+	return size(M.Ms[1])
 end
 
 # ╔═╡ ead4c008-0e7e-4414-aced-d4a576423bd3
@@ -475,9 +496,16 @@ md"""
 
 # ╔═╡ 3fed837a-8512-11eb-1fdd-c1b72b48d07b
 function matvec(M::LowRankMatrix, x)
-	
-	return missing # Your code here
+	matvec_total = matvec(M.Ms[1], x)
+	for i in 2:M.rank
+		matvec_total = matvec_total .+ matvec(M.Ms[i], x)
+	end
+		
+	return matvec_total
 end
+
+# ╔═╡ 9c72ca68-3502-4b98-81c1-a9c15e84b972
+matvec(M, collect(1:10))
 
 # ╔═╡ 2d65bd1a-8512-11eb-1bd2-0313588dfa0e
 md"""
@@ -1426,9 +1454,10 @@ version = "17.4.0+0"
 # ╠═0887ee78-0e8a-41c7-90e7-44237acc1477
 # ╠═1705dc7b-9f93-440b-acbb-ecb362d08125
 # ╟─8cab8d7d-32fc-4b43-bd54-fb0c78fa5d00
-# ╟─6a08cb74-8510-11eb-2212-2f1f676f3d5d
+# ╠═6a08cb74-8510-11eb-2212-2f1f676f3d5d
 # ╟─61cbfc80-86f5-11eb-316f-6307cac7cbbb
 # ╠═ee58251a-8511-11eb-074c-5b1e27c4ebd4
+# ╠═9c72ca68-3502-4b98-81c1-a9c15e84b972
 # ╟─3e72f920-8739-11eb-1354-57b18fa53103
 # ╟─36a63540-8739-11eb-21b2-a9d5ee60a0e5
 # ╟─4864e4d6-850c-11eb-210c-0318b8660a9a
@@ -1436,10 +1465,15 @@ version = "17.4.0+0"
 # ╟─9d4d943e-8502-11eb-31cb-e11824b2dce0
 # ╠═ba3cb45a-8502-11eb-2141-6369b0e08807
 # ╟─92a91904-850c-11eb-010e-c58ae218f541
-# ╠═f5a95dd8-850d-11eb-2aa7-2dcb1868577f
+# ╠═7a3b9b39-e709-4eeb-b0c2-91ce3a2a46a9
+# ╠═200486d6-2324-4776-9eb0-57351c4aacfe
+# ╠═01a55f47-5b71-48b4-874f-65a814f13e16
+# ╠═f00982f4-f2a9-4c49-8b23-dbbf1fbd993e
+# ╠═cd6b0bf9-4453-432f-8973-3d6b2de8e6d2
 # ╟─dc714540-8afa-11eb-205b-7770074771c8
 # ╠═c784e02c-8502-11eb-3efa-7f4c45f4274c
 # ╠═0bab818e-8503-11eb-02b3-178098599847
+# ╠═54e73e50-8adb-4518-8d1d-a27a75518f47
 # ╟─0d81b3d3-cfb4-4c27-bb00-18a55e00ab7a
 # ╟─2e2f503f-c1ad-4d7f-8c0d-cd41fad1f334
 # ╟─aca709f0-8503-11eb-1144-1fc01cb85c39
@@ -1448,8 +1482,8 @@ version = "17.4.0+0"
 # ╠═c49e350e-8503-11eb-15de-7308dd03dc08
 # ╠═dd27f508-8503-11eb-36b9-33f5f99f78b0
 # ╠═93a75ea0-8b0c-11eb-3946-3d5d92487fb5
-# ╟─84d7bc07-e211-4296-98e6-f03723481e37
-# ╟─4ed7c189-3130-4f6a-b57b-5322fdd4cef6
+# ╠═84d7bc07-e211-4296-98e6-f03723481e37
+# ╠═4ed7c189-3130-4f6a-b57b-5322fdd4cef6
 # ╟─1083d5ee-8512-11eb-0fdc-ab3987f94bc5
 # ╠═3fed837a-8512-11eb-1fdd-c1b72b48d07b
 # ╟─863f4490-8b06-11eb-352b-61cec188ae57
