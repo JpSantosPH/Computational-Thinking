@@ -39,7 +39,7 @@ Feel free to ask questions!
 # ╔═╡ 6f4274b5-87e2-420d-83d2-83a8408650cd
 # edit the code below to set your name and kerberos ID (i.e. email without @mit.edu)
 
-student = (name = "Jazzy Doe", kerberos_id = "jazz")
+student = (name = "John Paul", kerberos_id = "idk")
 
 # you might need to wait until all other cells in this notebook have completed running. 
 # scroll around the page to see what's up
@@ -354,7 +354,7 @@ function experiment(p::Real, N::Integer)
 	end
 	
 	return result
-end}
+end
 
 # ╔═╡ 192caf02-5234-4379-ad74-a95f3f249a72
 small_experiment = experiment(0.5, 20)
@@ -577,8 +577,13 @@ md"""
 
 # ╔═╡ 45735d82-8c52-11eb-3735-6ff9782dde1f
 Ps = let 
-	
-	# your code here
+	g = []
+	p = 0.25
+	n = 50
+	for i in 1:n
+		push!(g, p * (1 - p)^(i-1))
+	end
+	g
 end
 
 # ╔═╡ dd80b2eb-e4c3-4b2f-ad5c-526a241ac5e6
@@ -588,7 +593,7 @@ md"""
 """
 
 # ╔═╡ 3df70c76-1aa6-4a0c-8edf-a6e3079e406b
-
+sum(Ps)
 
 # ╔═╡ b1ef5e8e-8c52-11eb-0d95-f7fa123ee3c9
 md"""
@@ -600,7 +605,7 @@ md"""
 md"""
 
 ```math
-\sum_{k=1}^{\infty} P_k = \dots your \cdot answer \cdot here \dots = 1
+\sum_{k=1}^{\infty} P_k = p \cdot \frac{1}{1 - (1 - p)} = 1
 
 ```
 """
@@ -615,8 +620,10 @@ md"""
 👉 Plot $P_n$ as a function of $n$. Compare it to the corresponding result from the previous exercise (i.e. plot them both on the same graph).
 	"""
 
-# ╔═╡ dd59f48c-bb22-47b2-8acf-9c4ee4457cb9
-
+# ╔═╡ 1c7b9433-b1ce-43fd-9c15-cdac258d481c
+let
+bar(Ps)
+end
 
 # ╔═╡ 5907dc0a-de60-4b58-ac4b-1e415f0051d2
 md"""
@@ -624,7 +631,21 @@ md"""
 	"""
 
 # ╔═╡ c7093f08-52d2-4f22-9391-23bd196c6fb9
+Ps_1 = let
+	xs, ps = probability_distribution(large_experiment_2)
+	ps
+end
 
+# ╔═╡ 73acca4d-93c4-46b0-89dc-a570641fbc48
+Ps_error = abs.(Ps[1:37] .- Ps_1)
+
+# ╔═╡ 04387f60-00ad-4f7c-9d9b-1c58c76e4655
+sum(Ps_error) * 100 #(percent)
+
+# ╔═╡ a1b39961-6bce-4d6e-a496-85daa2c461a2
+let
+bar(Ps_1)
+end
 
 # ╔═╡ 316f369a-c051-4a35-9c64-449b12599295
 md"""
@@ -649,8 +670,16 @@ md"""
 
 # ╔═╡ 5185c938-8c53-11eb-132d-83342e0c775f
 function cumulative_sum(xs::Vector)
+	l = length(xs)
+	a = zeros(l)
+
+	for i in 1:l
+		for j in 1:i
+			a[i] = a[i] + xs[j]
+		end
+	end
 	
-	return missing
+	return a
 end
 
 # ╔═╡ e4095d34-552e-495d-b318-9afe6839d577
@@ -665,7 +694,7 @@ md"""
 cumulative = cumulative_sum(Ps)
 
 # ╔═╡ e649c914-dd28-4194-9393-4dc8836f3743
-
+bar(cumulative)
 
 # ╔═╡ fa59099a-8c52-11eb-37a7-291f80ea0406
 md"""
@@ -676,7 +705,7 @@ md"""
 # ╔═╡ 1ae91530-c77e-4d92-9ad3-c969bc7e1fa8
 md"""
 ```math
-C_n := \sum_{k=1}^n P_k = my \cdot answer \cdot here
+C_n := \sum_{k=1}^n P_k = p \cdot (\frac{1 - (1 - p)^{n}}{1 - (1 - p)})
 ```
 """
 
@@ -691,7 +720,7 @@ md"""
 # ╔═╡ 16b4e98c-4ae7-4145-addf-f43a0a96ec82
 md"""
 ```math
-n(r,p) = my \cdot answer \cdot here
+n(r,p) = \frac{ln(1-r)}{ln(1-p)}
 ```
 """
 
@@ -703,9 +732,9 @@ md"""
 """
 
 # ╔═╡ 47d56992-8c54-11eb-302a-eb3153978d26
-function geometric_bin(u::Real, p::Real)
-	
-	return missing
+function geometric_bin(r::Real, p::Real)
+	n = floor((log(ℯ, 1 - r) / log(ℯ, 1 - p)))
+	return n
 end
 
 # ╔═╡ adfb343d-beb8-4576-9f2a-d53404cee42b
@@ -1071,15 +1100,15 @@ bigbreak
 # ╔═╡ a5234680-8b02-11eb-2574-15489d0d49ea
 bigbreak
 
-# ╔═╡ 2962c6da-feda-4d65-918b-d3b178a18fa0
-begin
-	fruits = ["🍒", "🍐", "🍋"]
-	length(fruits)
-end
-
 # ╔═╡ 887a5106-c44a-4437-8c6f-04ad6610738a
 begin
 	fruits = ["🍉"]
+	length(fruits)
+end
+
+# ╔═╡ 2962c6da-feda-4d65-918b-d3b178a18fa0
+begin
+	fruits = ["🍒", "🍐", "🍋"]
 	length(fruits)
 end
 
@@ -2154,9 +2183,12 @@ version = "0.9.1+5"
 # ╠═a3f08480-4b2b-46f2-af4a-14270869e766
 # ╟─1b6035fb-d8fc-437f-b75e-f1a6b3b4cae7
 # ╟─c3cb9ea0-5e0e-4d5a-ab23-80ed8d91209c
-# ╠═dd59f48c-bb22-47b2-8acf-9c4ee4457cb9
+# ╠═1c7b9433-b1ce-43fd-9c15-cdac258d481c
 # ╟─5907dc0a-de60-4b58-ac4b-1e415f0051d2
+# ╠═73acca4d-93c4-46b0-89dc-a570641fbc48
+# ╠═04387f60-00ad-4f7c-9d9b-1c58c76e4655
 # ╠═c7093f08-52d2-4f22-9391-23bd196c6fb9
+# ╠═a1b39961-6bce-4d6e-a496-85daa2c461a2
 # ╟─316f369a-c051-4a35-9c64-449b12599295
 # ╟─9240f9dc-aa34-4e7b-8b82-86ea1376f527
 # ╟─d24ddb61-3d65-4bea-ad8f-d5a3ac44a563
@@ -2173,7 +2205,7 @@ version = "0.9.1+5"
 # ╠═16b4e98c-4ae7-4145-addf-f43a0a96ec82
 # ╟─fa671c06-8c52-11eb-20e0-85e2abb4ecc7
 # ╠═47d56992-8c54-11eb-302a-eb3153978d26
-# ╟─a81516e8-0099-414e-9f2c-ab438764348e
+# ╠═a81516e8-0099-414e-9f2c-ab438764348e
 # ╟─adfb343d-beb8-4576-9f2a-d53404cee42b
 # ╠═5b7f2a91-a4f0-49f7-b8cf-6f677104d3e1
 # ╠═b3b11113-2f0c-45d2-a14e-011a61ae8e9b
