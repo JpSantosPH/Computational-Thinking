@@ -336,7 +336,7 @@ md"""
 
 # ╔═╡ 370ec1dc-8688-443c-bf57-dd1b2a42a5fa
 interpretation_of_p_equals_one = md"""
-blablabla
+is aliveage at t = 1
 """
 
 # ╔═╡ fdb46c72-8c4f-11eb-17a2-8b7628b5d3b3
@@ -734,7 +734,7 @@ md"""
 # ╔═╡ 47d56992-8c54-11eb-302a-eb3153978d26
 function geometric_bin(r::Real, p::Real)
 	n = floor((log(ℯ, 1 - r) / log(ℯ, 1 - p)))
-	return n
+	return Int(n)
 end
 
 # ╔═╡ adfb343d-beb8-4576-9f2a-d53404cee42b
@@ -755,10 +755,23 @@ md"""
 """
 
 # ╔═╡ 1d007d99-2526-4c19-9c96-3fad1750670e
+function fast_experiment(p::Real, N::Integer)
+	result = Int.([])
+	
+	for i in 1:N
+		push!(result, geometric_fast(p))
+	end
+	
+	return result
+end
 
+# ╔═╡ 2496100e-12b2-43f5-885e-dce8618918cc
+fast_e = fast_experiment(10^(-10), 10_000)
 
-# ╔═╡ c37bbb1f-8f5e-4097-9104-43ef65aa1cbd
-
+# ╔═╡ 997fc070-0447-469c-a8f4-f519f3f8c51d
+begin
+	histogram(fast_e,bin=100)
+end
 
 # ╔═╡ 79eb5e14-8c54-11eb-3c8c-dfeba16305b2
 md"""
@@ -782,7 +795,19 @@ md"""
 # ╔═╡ 2270e6ba-8c5e-11eb-3600-615519daa5e0
 function atmosphere(p::Real, y0::Real, N::Integer)
 	
-	return missing
+	y = 10
+	ys = [y]
+
+	for i in 1:N
+		if bernoulli(1-p) == true
+			if y != 1
+				y = y - 1
+			end
+			push!(ys, y)
+		end
+	end
+	
+	return ys
 end
 
 # ╔═╡ 225bbcbd-0628-4151-954e-9a85d1020fd9
@@ -797,14 +822,33 @@ Let's simulate it for $10^7$ time steps with $x_0 = 10$ and $p=0.55$.
 👉 Calculate and plot the probability distribution of the walker's height.
 """
 
-# ╔═╡ deb5fbfb-1e03-42ce-a6d6-c8d3edd89a9a
-
-
 # ╔═╡ 8517f92b-d4d3-46b5-9b9a-e609175b6481
-
+function atmosphere_simulation(p::Real, N::Integer)
+	result = []
+	
+	for i in 1:N
+		push!(result, atmosphere(p, 10, 10))
+	end
+	
+	return result
+end
 
 # ╔═╡ c1e3f066-5e12-4018-9fb2-4e7fc13172ba
+QQ = atmosphere_simulation(0.55, 100)
 
+# ╔═╡ 097bbf00-c88d-4b6c-a378-ae62b45eb301
+probability_distribution(QQ)
+
+# ╔═╡ 1b813b4e-bd66-48f2-8e92-20ed62e5e41d
+begin
+	plot()
+	
+	for i in 1:10
+		plot!(atmosphere(0.55, 10, 10^7), leg=false, size=(500, 300), lw=2, alpha=0.5)
+	end
+	
+	plot!()
+end
 
 # ╔═╡ 1dc68e2e-8c5e-11eb-3486-454d58ac9c87
 md"""
@@ -2211,16 +2255,18 @@ version = "0.9.1+5"
 # ╠═b3b11113-2f0c-45d2-a14e-011a61ae8e9b
 # ╟─fc681dde-8c52-11eb-07fa-7d0ef9f22e93
 # ╠═1d007d99-2526-4c19-9c96-3fad1750670e
-# ╠═c37bbb1f-8f5e-4097-9104-43ef65aa1cbd
+# ╠═2496100e-12b2-43f5-885e-dce8618918cc
+# ╠═997fc070-0447-469c-a8f4-f519f3f8c51d
 # ╟─94053b41-4a06-435d-a91a-9dfa9655937c
 # ╟─79eb5e14-8c54-11eb-3c8c-dfeba16305b2
 # ╟─8c9c217e-8c54-11eb-07f1-c5fde6aa2946
 # ╠═2270e6ba-8c5e-11eb-3600-615519daa5e0
 # ╠═225bbcbd-0628-4151-954e-9a85d1020fd9
 # ╟─1dc5daa6-8c5e-11eb-1355-b1f627d04a18
-# ╠═deb5fbfb-1e03-42ce-a6d6-c8d3edd89a9a
 # ╠═8517f92b-d4d3-46b5-9b9a-e609175b6481
 # ╠═c1e3f066-5e12-4018-9fb2-4e7fc13172ba
+# ╠═097bbf00-c88d-4b6c-a378-ae62b45eb301
+# ╠═1b813b4e-bd66-48f2-8e92-20ed62e5e41d
 # ╟─1dc68e2e-8c5e-11eb-3486-454d58ac9c87
 # ╠═bb8f69fd-c704-41ca-9328-6622d390f71f
 # ╟─1dc7389c-8c5e-11eb-123a-7f59dc6504cf

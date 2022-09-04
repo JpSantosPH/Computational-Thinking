@@ -12,13 +12,6 @@ end
 Base.size(x::OneCold) = (x.n,)
 Base.getindex(x::OneCold, i::Int) = Int(x.k != i)
 
-struct MultipicationTable <: AbstractMatrix{Real}
-	oc::Vector{Real}
-	or::Vector{Real}
-end
-Base.size(x::MultipicationTable) = (length(x.oc), length(x.or)+1)
-Base.getindex(x::MultipicationTable, i::Int, j::Int) = x.oc[i] * if j==1 1 else x.or[j-1] end
-
 struct Bernoulli # Bernoulli random variable or weigted coin toss
 	p::Float64
 end 
