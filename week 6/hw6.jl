@@ -459,7 +459,7 @@ let
 		xs, ps = probability_distribution(large_experiment)
 		
 	bar(xs, ps, alpha=0.5, leg=false, yscale=:log10)
-	vline!([3.9898], ls=:dash)
+	vline!([mean(large_experiment)], ls=:dash)
 end
 
 # ╔═╡ fdcb1c1a-8c4f-11eb-0aeb-3fae27eaacbd
@@ -487,23 +487,6 @@ let
 	bar(xs, ps, alpha=0.5, leg=false)
 	vline!([mean(large_experiment_2)], ls=:dash)
 end
-
-# ╔═╡ e8d2a4ab-b710-4c16-ab71-b8c1e71fe442
-let
-		xs, ps = probability_distribution(large_experiment_2)
-		
-	bar(xs, ps, alpha=0.5, leg=false, yscale=:log10)
-	vline!([mean(large_experiment_2)], ls=:dash)
-end
-
-# ╔═╡ a486dc37-609d-4aae-b4ec-71de726191c7
-
-
-# ╔═╡ 264089bc-aa30-450f-89f7-ffd589eee13c
-
-
-# ╔═╡ 0be83efa-e94f-4397-829f-24f705b044b1
-
 
 # ╔═╡ fdd5d98e-8c4f-11eb-32bc-51bc1db98930
 md"""
@@ -799,19 +782,23 @@ function atmosphere(p::Real, y0::Real, N::Integer)
 	ys = [y]
 
 	for i in 1:N
-		if bernoulli(1-p) == true
+		if bernoulli(p) == true
 			if y != 1
 				y = y - 1
 			end
-			push!(ys, y)
+
+		else
+			y = y + 1
 		end
+		
+		push!(ys, y)
 	end
 	
 	return ys
 end
 
 # ╔═╡ 225bbcbd-0628-4151-954e-9a85d1020fd9
-atmosphere(0.8, 10, 50)
+atmosphere(0.55, 10, 10^7)
 
 # ╔═╡ 1dc5daa6-8c5e-11eb-1355-b1f627d04a18
 md"""
@@ -822,32 +809,12 @@ Let's simulate it for $10^7$ time steps with $x_0 = 10$ and $p=0.55$.
 👉 Calculate and plot the probability distribution of the walker's height.
 """
 
-# ╔═╡ 8517f92b-d4d3-46b5-9b9a-e609175b6481
-function atmosphere_simulation(p::Real, N::Integer)
-	result = []
-	
-	for i in 1:N
-		push!(result, atmosphere(p, 10, 10))
-	end
-	
-	return result
-end
-
-# ╔═╡ c1e3f066-5e12-4018-9fb2-4e7fc13172ba
-QQ = atmosphere_simulation(0.55, 100)
-
-# ╔═╡ 097bbf00-c88d-4b6c-a378-ae62b45eb301
-probability_distribution(QQ)
-
-# ╔═╡ 1b813b4e-bd66-48f2-8e92-20ed62e5e41d
-begin
-	plot()
-	
-	for i in 1:10
-		plot!(atmosphere(0.55, 10, 10^7), leg=false, size=(500, 300), lw=2, alpha=0.5)
-	end
-	
-	plot!()
+# ╔═╡ 25d8747a-fd34-4b37-a775-3847d6540404
+let
+		xs, ps = probability_distribution(atmosphere(0.55, 10, 10^7))
+		
+	bar(xs, ps, alpha=0.5, leg=false, yscale=:log10)
+	vline!([mean(ps)], ls=:dash)
 end
 
 # ╔═╡ 1dc68e2e-8c5e-11eb-3486-454d58ac9c87
@@ -856,7 +823,7 @@ md"""
 """
 
 # ╔═╡ bb8f69fd-c704-41ca-9328-6622d390f71f
-
+"looks a lot like a geometric distribution"
 
 # ╔═╡ 1dc7389c-8c5e-11eb-123a-7f59dc6504cf
 md"""
@@ -866,11 +833,19 @@ md"""
 
 """
 
-# ╔═╡ d3bec73d-0106-496d-93ae-e1e26534b8c7
+# ╔═╡ d8e24398-5e8b-4c2c-a980-7f654d37ed25
 
+
+# ╔═╡ d3bec73d-0106-496d-93ae-e1e26534b8c7
+@bind QQN Slider(1:100:100000, show_value=true, default=1)
 
 # ╔═╡ d972be1f-a8ad-43ed-a90d-bca358d812c2
-
+let
+		xs, ps = probability_distribution(atmosphere(0.55, 10, QQN))
+		
+	bar(xs, ps, alpha=0.5, leg=false)
+	vline!([mean(ps)], ls=:dash)
+end
 
 # ╔═╡ de83ffd6-cd0c-4b78-afe4-c0bcc54471d7
 md"""
@@ -1144,15 +1119,15 @@ bigbreak
 # ╔═╡ a5234680-8b02-11eb-2574-15489d0d49ea
 bigbreak
 
-# ╔═╡ 887a5106-c44a-4437-8c6f-04ad6610738a
-begin
-	fruits = ["🍉"]
-	length(fruits)
-end
-
 # ╔═╡ 2962c6da-feda-4d65-918b-d3b178a18fa0
 begin
 	fruits = ["🍒", "🍐", "🍋"]
+	length(fruits)
+end
+
+# ╔═╡ 887a5106-c44a-4437-8c6f-04ad6610738a
+begin
+	fruits = ["🍉"]
 	length(fruits)
 end
 
@@ -2206,10 +2181,6 @@ version = "0.9.1+5"
 # ╠═9a92eba4-ad68-4c53-a242-734718aeb3f1
 # ╠═48751015-c374-4a77-8a00-bca81bbc8305
 # ╠═562202be-5eac-46a4-9542-e6593bc39ff9
-# ╠═e8d2a4ab-b710-4c16-ab71-b8c1e71fe442
-# ╠═a486dc37-609d-4aae-b4ec-71de726191c7
-# ╠═264089bc-aa30-450f-89f7-ffd589eee13c
-# ╠═0be83efa-e94f-4397-829f-24f705b044b1
 # ╟─fdd5d98e-8c4f-11eb-32bc-51bc1db98930
 # ╠═406c9bfa-409d-437c-9b86-fd02fdbeb88f
 # ╟─f8b982a7-7246-4ede-89c8-b2cf183470e9
@@ -2263,13 +2234,11 @@ version = "0.9.1+5"
 # ╠═2270e6ba-8c5e-11eb-3600-615519daa5e0
 # ╠═225bbcbd-0628-4151-954e-9a85d1020fd9
 # ╟─1dc5daa6-8c5e-11eb-1355-b1f627d04a18
-# ╠═8517f92b-d4d3-46b5-9b9a-e609175b6481
-# ╠═c1e3f066-5e12-4018-9fb2-4e7fc13172ba
-# ╠═097bbf00-c88d-4b6c-a378-ae62b45eb301
-# ╠═1b813b4e-bd66-48f2-8e92-20ed62e5e41d
+# ╠═25d8747a-fd34-4b37-a775-3847d6540404
 # ╟─1dc68e2e-8c5e-11eb-3486-454d58ac9c87
-# ╠═bb8f69fd-c704-41ca-9328-6622d390f71f
+# ╟─bb8f69fd-c704-41ca-9328-6622d390f71f
 # ╟─1dc7389c-8c5e-11eb-123a-7f59dc6504cf
+# ╠═d8e24398-5e8b-4c2c-a980-7f654d37ed25
 # ╠═d3bec73d-0106-496d-93ae-e1e26534b8c7
 # ╠═d972be1f-a8ad-43ed-a90d-bca358d812c2
 # ╟─de83ffd6-cd0c-4b78-afe4-c0bcc54471d7
