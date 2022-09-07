@@ -17,10 +17,9 @@ end
 # ╔═╡ 15187690-0403-11eb-2dfd-fd924faa3513
 begin
     using Plots, PlutoUI
+	using OffsetArrays
+	using Statistics
 end
-
-# ╔═╡ d61415ec-5313-4c7e-a51e-0b7a90c89bec
-using Statistics
 
 # ╔═╡ 01341648-0403-11eb-2212-db450c299f35
 md"_homework 7, version 3_"
@@ -183,6 +182,11 @@ function is_infected(agent::Agent)
 	return agent.status == I
 end
 
+# ╔═╡ 86821074-8760-4a56-a696-289d42249899
+function is_recovered(agent::Agent)
+	return agent.status == R
+end
+
 # ╔═╡ 8692bf42-0403-11eb-191f-b7d08895274f
 md"""
 #### Exericse 1.4
@@ -229,7 +233,7 @@ $(html"<span id=interactfunction></span>")
 """
 
 # ╔═╡ fc8fb7ee-be0e-46d6-a9f7-96e09d2dd742
-function successfully_infects(infection::InfectionRecovery)
+function successfully_infects(infection::AbstractInfection)
 	return bernoulli(infection.p_infection) == true
 end
 
@@ -239,7 +243,7 @@ function update_num_infected!(source::Agent)
 end
 
 # ╔═╡ c278dfc0-6612-49e1-a196-7d26024d7861
-function successfully_recovers(infection::InfectionRecovery)
+function successfully_recovers(infection::AbstractInfection)
 	return bernoulli(infection.p_recovery) == true
 end
 
@@ -261,17 +265,6 @@ end
 md"""
 Play around with the test case below to test your function! Try changing the definitions of `agent`, `source` and `infection`. Since we are working with randomness, you might want to run the cell multiple times.
 """
-
-# ╔═╡ 9c39974c-04a5-11eb-184d-317eb542452c
-let
-	agent = Agent(S, 0)
-	source = Agent(I, 0)
-	infection = InfectionRecovery(0.9, 0.5)
-	
-	interact!(agent, source, infection)
-	
-	(agent=agent, source=source)
-end
 
 # ╔═╡ 619c8a10-0403-11eb-2e89-8b0974fb01d0
 md"""
@@ -310,26 +303,10 @@ function choose_2_agents(agents::Vector{Agent})
 	return agent_1, agent_2
 end
 
-# ╔═╡ 2ade2694-0425-11eb-2fb2-390da43d9695
-function step!(agents::Vector{Agent}, infection::InfectionRecovery)
-	agent, source = choose_2_agents(agents)
-	interact!(agent, source, infection)
-	return agents
-end
-
 # ╔═╡ 955321de-0403-11eb-04ce-fb1670dfbb9e
 md"""
 👉 Write a function `sweep!`. It runs `step!` $N$ times, where $N$ is the number of agents. Thus each agent acts, on average, once per sweep; a sweep is thus the unit of time in our Monte Carlo simulation.
 """
-
-# ╔═╡ 46133a74-04b1-11eb-0b46-0bc74e564680
-function sweep!(agents::Vector{Agent}, infection::AbstractInfection)
-
-	for i in eachindex(agents)
-		step!(agents, infection)
-	end
-
-end
 
 # ╔═╡ 95771ce2-0403-11eb-3056-f1dc3a8b7ec3
 md"""
@@ -368,33 +345,6 @@ function SIR_count(agents::Vector{Agent})
 
 end
 
-# ╔═╡ 887d27fc-04bc-11eb-0ab9-eb95ef9607f8
-function simulation(N::Integer, T::Integer, infection::AbstractInfection)
-	agents = generate_agents(N)
-
-	susceptible = [N-1]
-	infected = [1]
-	recovered = [0]
-	for t in 1:T-1
-		sweep!(agents, infection)
-		s, i, r = SIR_count(agents)
-		push!(susceptible, s)
-		push!(infected, i)
-		push!(recovered, r)
-	end
-
-	return (S=susceptible, I=infected, R=recovered)
-end
-
-# ╔═╡ b92f1cec-04ae-11eb-0072-3535d1118494
-simulation(3, 20, InfectionRecovery(0.9, 0.2))
-
-# ╔═╡ 2c62b4ae-04b3-11eb-0080-a1035a7e31a2
-sim = simulation(100, 1000, InfectionRecovery(0.02, 0.002))
-
-# ╔═╡ e24560f5-4d37-41c3-bd37-02a966e85638
-typeof(sim)
-
 # ╔═╡ a324a80d-e907-4bc5-ba93-4a74f4084ec0
 function get_I(sim::Vector{NamedTuple{(:S, :I, :R), Tuple{Int64, Int64, Int64}}})
 	return [sim[i].I for i ∈ 1:length(sim)]
@@ -408,19 +358,6 @@ end
 # ╔═╡ 28db9d98-04ca-11eb-3606-9fb89fa62f36
 @bind run_basic_sir Button("Run simulation again!")
 
-# ╔═╡ c5156c72-04af-11eb-1106-b13969b036ca
-let
-	run_basic_sir
-	
-	N = 2500
-	T = 2500
-	sim = simulation(N, T, InfectionRecovery(0.02, 0.002))	
-	
-	result = plot(1:T, sim.S, ylim=(0, N), label="Susceptible")
-	plot!(result, 1:T, sim.I, ylim=(0, N), label="Infectious")
-	plot!(result, 1:T, sim.R, ylim=(0, N), label="Recovered")
-end
-
 # ╔═╡ bf6fd176-04cc-11eb-008a-2fb6ff70a9cb
 md"""
 #### Exercise 2.2
@@ -431,24 +368,10 @@ Instead of pressing the button many times, let's have the computer repeat the si
 Every single simulation returns a named tuple with the status counts, so the result of multiple simulations will be an array of those. Have a look inside the result, `simulations`, and make sure that its structure is clear.
 """
 
-# ╔═╡ 38b1aa5a-04cf-11eb-11a2-930741fc9076
-function repeat_simulations(N, T, infection, num_simulations)
-
-	map(1:num_simulations) do _
-		simulation(N, T, infection)
-	end
-end
-
 # ╔═╡ 80e6f1e0-04b1-11eb-0d4e-475f1d80c2bb
 md"""
 In the cell below, we plot the evolution of the number of $I$ individuals as a function of time for each of the simulations on the same plot using transparency (`alpha=0.5` inside the plot command).
 """
-
-# ╔═╡ 80c2cd88-04b1-11eb-326e-0120a39405ea
-simulations = repeat_simulations(100, 1000, InfectionRecovery(0.02, 0.002), 50)
-
-# ╔═╡ f769f082-d4e2-4fb2-b953-9da00f66fabe
-first(simulations).I
 
 # ╔═╡ 95c598d4-0403-11eb-2328-0175ed564915
 md"""
@@ -493,20 +416,6 @@ function mean_I_all_t(simulations::Vector{<:NamedTuple})
 	
 end	
 
-# ╔═╡ 9cd2bb00-04b1-11eb-1d83-a703907141a7
-let
-	p = plot()
-	
-	for sim in simulations
-		plot!(p, 1:1000, sim.I, alpha=.5, label=nothing)
-	end
-	
-	plot!(p, 1:1000, mean_I_all_t(simulations), label="mean Infected", lw=3)
-end
-
-# ╔═╡ d4daa4ce-ace0-4a6b-a8b5-8eee9608c349
-mean_I_all_t(simulations)
-
 # ╔═╡ e1fd7392-cdec-46dd-9c60-5951f4e9f581
 function mean_R_all_t(simulations::Vector{<:NamedTuple})
 
@@ -541,9 +450,6 @@ function sir_mean_plot(simulations::Vector{<:NamedTuple})
 	return p
 end
 
-# ╔═╡ 7f635722-04d0-11eb-3209-4b603c9e843c
-sir_mean_plot(simulations)
-
 # ╔═╡ dfb99ace-04cf-11eb-0739-7d694c837d59
 md"""
 👉 Allow $p_\text{infection}$ and $p_\text{recovery}$ to be changed interactively and find parameter values for which you observe an epidemic outbreak.
@@ -554,12 +460,6 @@ md"""
 
 # ╔═╡ 89d5f592-d941-4d76-a5e3-39698139c8ac
 @bind p_recovery_2 Slider(0.0001:0.0001:1, show_value=true)
-
-# ╔═╡ c4a494ac-a642-4128-ada2-c160564ab99c
-simulations_2 = repeat_simulations(100, 10000, InfectionRecovery(p_infection_2,  p_recovery_2), 20)
-
-# ╔═╡ 4550e2b3-c345-48b7-ab17-378cbcd5bd2c
-sir_mean_plot(simulations_2)
 
 # ╔═╡ 95eb9f88-0403-11eb-155b-7b2d3a07cff0
 md"""
@@ -637,15 +537,11 @@ function sir_mean_error_plot(simulations::Vector{<:NamedTuple})
 	std_I = std_I_all_t(simulations)
 	std_R = std_R_all_t(simulations)
 
-	p = plot()
-	
-	plot!(p, 1:T, mean_S, alpha=1, label="susceptible")
-	plot!(p, 1:T, mean_I, alpha=1, label="infected")
-	plot!(p, 1:T, mean_R, alpha=1, label="recovered")
-	
-	plot!(p, 1:T, mean_S, alpha=0.01, label=false, yerr = std_S)
-	plot!(p, 1:T, mean_I, alpha=0.01, label=false, yerr = std_I)
-	plot!(p, 1:T, mean_R, alpha=0.01, label=false, yerr = std_R)
+	p = sir_mean_plot(simulations)
+
+	plot!(p, 1:T, mean_S, alpha=0.3, label=false, yerr = std_S)
+	plot!(p, 1:T, mean_I, alpha=0.3, label=false, yerr = std_I)
+	plot!(p, 1:T, mean_R, alpha=0.3, label=false, yerr = std_R)
 	
 	return p
 end
@@ -656,12 +552,6 @@ end
 # ╔═╡ 1af6fb58-58c8-4da5-9b4b-702a973e0ae1
 @bind p_recovery_3 Slider(0.0001:0.0001:1, show_value=true)
 
-# ╔═╡ 77d58f29-d739-440c-812c-54a66dce0b30
-simulations_3 = repeat_simulations(100, 3500, InfectionRecovery(p_infection_3,  p_recovery_3), 20)
-
-# ╔═╡ 2940d531-8920-42e4-8bf3-edb98eafbc7c
-sir_mean_error_plot(simulations_3)
-
 # ╔═╡ 9611ca24-0403-11eb-3582-b7e3bb243e62
 md"""
 #### Exercise 2.3
@@ -670,14 +560,57 @@ md"""
 
 """
 
-# ╔═╡ 26e2978e-0435-11eb-0d61-25f552d2771e
-num_infected = mean_I_all_t(repeat_simulations(100, 1000, InfectionRecovery(p_infection_3,  p_recovery_3), 50))
-
-# ╔═╡ d7cd213d-5344-4403-a0f6-ea53700f5973
-num_infected_mean = num_infected ./ mean(num_infected)
-
 # ╔═╡ 32904857-9061-4f2d-9206-52e7c85fd5b9
-histogram(num_infected_mean, norm=true, leg=false, alpha=0.5, size=(500, 300))
+function I_all_t(simulations::Vector{<:NamedTuple})
+
+	I = []
+	num_of_simulations = eachindex(simulations)
+	num_of_time_steps = eachindex(first(simulations).I)
+	
+	for t in num_of_time_steps
+		accumulator = Float64[]
+		for i in num_of_simulations
+			push!(accumulator, simulations[i].I[t])
+		end
+		push!(I, accumulator)
+	end
+
+	return I
+	
+end
+
+# ╔═╡ b52350b8-a25c-4d6b-a685-a207b6d7ad7c
+function probability_distribution(data::Vector)
+	counts = Dict{Int,Int}()
+	T = 100
+	for i in data
+		if haskey(counts, i)
+			counts[i] += 1
+		else
+			push!(counts, i=>1)
+		end
+	end
+	
+	counts = sort(counts)
+	
+	ks = collect(keys(counts))
+	vs = collect(values(counts))
+
+	f = vs ./ sum(vs)
+
+	distribution = zeros(T+1) # 100 people, 0-100 infection state
+
+	index = 0
+	for k in ks
+		index += 1
+		distribution[k+1] = f[index]
+	end
+	
+	return distribution
+end
+
+# ╔═╡ ee88e121-190b-42fc-8c2d-1c45c893bc10
+plotly()
 
 # ╔═╡ 9635c944-0403-11eb-3982-4df509f6a556
 md"""
@@ -687,7 +620,7 @@ md"""
 """
 
 # ╔═╡ 4ad11052-042c-11eb-3643-8b2b3e1269bc
-
+md"We could characterize the magnitude of the pandemic by looking at the peak of the infection curve, how fast the recovery of people, and number of that was infected from the susceptible population."
 
 # ╔═╡ 61c00724-0403-11eb-228d-17c11670e5d1
 md"""
@@ -702,7 +635,10 @@ This new type `Reinfection` should also be a **subtype** of `AbstractInfection`.
 """
 
 # ╔═╡ 8dd97820-04a5-11eb-36c0-8f92d4b859a8
-
+struct Reinfection <: AbstractInfection
+	p_infection
+	p_recovery
+end
 
 # ╔═╡ 99ef7b2a-0403-11eb-08ef-e1023cd151ae
 md"""
@@ -711,7 +647,140 @@ md"""
 """
 
 # ╔═╡ bbb103d5-c8f9-485b-9337-40892bb60506
+function interact!(agent::Agent, source::Agent, reinfection::Reinfection)
+	if is_susceptible(agent) && is_infected(source)
+		if successfully_infects(reinfection)
+			set_status!(agent, I)
+			update_num_infected!(source)
+		end
+	elseif is_infected(agent)
+		if successfully_recovers(reinfection)
+			set_status!(agent, S)
+		end
+	end
+end
 
+# ╔═╡ 9c39974c-04a5-11eb-184d-317eb542452c
+let
+	agent = Agent(S, 0)
+	source = Agent(I, 0)
+	infection = InfectionRecovery(0.9, 0.5)
+	
+	interact!(agent, source, infection)
+	
+	(agent=agent, source=source)
+end
+
+# ╔═╡ 2ade2694-0425-11eb-2fb2-390da43d9695
+function step!(agents::Vector{Agent}, infection::AbstractInfection)
+	agent, source = choose_2_agents(agents)
+	interact!(agent, source, infection)
+	return agents
+end
+
+# ╔═╡ 46133a74-04b1-11eb-0b46-0bc74e564680
+function sweep!(agents::Vector{Agent}, infection::AbstractInfection)
+
+	for i in eachindex(agents)
+		step!(agents, infection)
+	end
+
+end
+
+# ╔═╡ 887d27fc-04bc-11eb-0ab9-eb95ef9607f8
+function simulation(N::Integer, T::Integer, infection::AbstractInfection)
+	agents = generate_agents(N)
+
+	susceptible = [N-1]
+	infected = [1]
+	recovered = [0]
+	for t in 1:T-1
+		sweep!(agents, infection)
+		s, i, r = SIR_count(agents)
+		push!(susceptible, s)
+		push!(infected, i)
+		push!(recovered, r)
+	end
+
+	return (S=susceptible, I=infected, R=recovered)
+end
+
+# ╔═╡ b92f1cec-04ae-11eb-0072-3535d1118494
+simulation(3, 20, InfectionRecovery(0.9, 0.2))
+
+# ╔═╡ 2c62b4ae-04b3-11eb-0080-a1035a7e31a2
+sim = simulation(100, 1000, InfectionRecovery(0.02, 0.002))
+
+# ╔═╡ e24560f5-4d37-41c3-bd37-02a966e85638
+typeof(sim)
+
+# ╔═╡ c5156c72-04af-11eb-1106-b13969b036ca
+let
+	run_basic_sir
+	
+	N = 2500
+	T = 2500
+	sim = simulation(N, T, InfectionRecovery(0.02, 0.002))	
+	
+	result = plot(1:T, sim.S, ylim=(0, N), label="Susceptible")
+	plot!(result, 1:T, sim.I, ylim=(0, N), label="Infectious")
+	plot!(result, 1:T, sim.R, ylim=(0, N), label="Recovered")
+end
+
+# ╔═╡ 38b1aa5a-04cf-11eb-11a2-930741fc9076
+function repeat_simulations(N, T, infection, num_simulations)
+
+	map(1:num_simulations) do _
+		simulation(N, T, infection)
+	end
+end
+
+# ╔═╡ 80c2cd88-04b1-11eb-326e-0120a39405ea
+simulations = repeat_simulations(100, 1000, InfectionRecovery(0.02, 0.002), 50)
+
+# ╔═╡ 9cd2bb00-04b1-11eb-1d83-a703907141a7
+let
+	p = plot()
+	
+	for sim in simulations
+		plot!(p, 1:1000, sim.I, alpha=.5, label=nothing)
+	end
+	
+	plot!(p, 1:1000, mean_I_all_t(simulations), label="mean Infected", lw=3)
+end
+
+# ╔═╡ f769f082-d4e2-4fb2-b953-9da00f66fabe
+first(simulations).I
+
+# ╔═╡ d4daa4ce-ace0-4a6b-a8b5-8eee9608c349
+mean_I_all_t(simulations)
+
+# ╔═╡ 7f635722-04d0-11eb-3209-4b603c9e843c
+sir_mean_plot(simulations)
+
+# ╔═╡ c4a494ac-a642-4128-ada2-c160564ab99c
+simulations_2 = repeat_simulations(100, 10000, InfectionRecovery(p_infection_2,  p_recovery_2), 20)
+
+# ╔═╡ 4550e2b3-c345-48b7-ab17-378cbcd5bd2c
+sir_mean_plot(simulations_2)
+
+# ╔═╡ 77d58f29-d739-440c-812c-54a66dce0b30
+simulations_3 = repeat_simulations(100, 150, InfectionRecovery(p_infection_3,  p_recovery_3), 1000)
+
+# ╔═╡ 2940d531-8920-42e4-8bf3-edb98eafbc7c
+sir_mean_error_plot(simulations_3)
+
+# ╔═╡ 1bd82b7c-19b9-4888-bf95-44c0e3ddec80
+num_infected = I_all_t(simulations_3)
+
+# ╔═╡ 8d4d47b8-c348-4447-bd3d-f5cffcdc6a08
+ps = probability_distribution.(num_infected)
+
+# ╔═╡ c4b3323f-8599-4def-aa2b-525444ecccd5
+M = reduce(hcat, ps)'
+
+# ╔═╡ 1fd12df0-a7bf-4c65-85cd-9a9c42443f69
+AA = surface(M, yflip=true)
 
 # ╔═╡ 9a13b17c-0403-11eb-024f-9b37e95e211b
 md"""
@@ -722,8 +791,34 @@ Note that you should be able to re-use the `sweep!` and `simulation` functions ,
 
 """
 
-# ╔═╡ 1ac4b33a-0435-11eb-36f8-8f3f81ae7844
+# ╔═╡ 91bac7ae-d522-4bc5-b927-8ab346126a58
+@bind p_infection_4 Slider(0.0001:0.0001:1, show_value=true)
 
+# ╔═╡ fcf3fae5-3540-4927-b29a-a6573d01dade
+@bind p_be_susceptible_4 Slider(0.0001:0.0001:1, show_value=true)
+
+# ╔═╡ 1ac4b33a-0435-11eb-36f8-8f3f81ae7844
+simulations_4 = repeat_simulations(100, 1000, Reinfection(p_infection_4,  p_be_susceptible_4), 50)
+
+# ╔═╡ 8a4b17f2-5d6c-44cb-a138-aa140c98f798
+let
+	p = plot()
+	
+	for sim in simulations_4
+		plot!(p, 1:1000, sim.I, alpha=.5, label=nothing)
+	end
+	
+	plot!(p, 1:1000, mean_I_all_t(simulations_4), label="mean Infected", lw=3)
+end
+
+# ╔═╡ df939632-6cfa-48b2-bf4b-6580ce281130
+ZZ = generate_agents(2)
+
+# ╔═╡ 424c2f22-ca05-499b-92b6-541b929e7e99
+ZZZ = Reinfection(0.02, 0.002)
+
+# ╔═╡ ceb82c7a-1814-4707-8211-3d95a6ef36bc
+interact!(ZZ[1], ZZ[2], ZZZ)
 
 # ╔═╡ 9a377b32-0403-11eb-2799-e7e59caa6a45
 md"""
@@ -733,7 +828,10 @@ md"""
 """
 
 # ╔═╡ 21c50840-0435-11eb-1307-7138ecde0691
+sir_mean_plot(simulations_4)
 
+# ╔═╡ 49f812f4-c1cc-4d1b-803b-07680acc9235
+md"No. the plot follows the same logistic curve of the susceptible on simulations_3 but inverted."
 
 # ╔═╡ 531d13c2-0414-11eb-0acd-4905a684869d
 if student.name == "Jazzy Doe"
@@ -949,11 +1047,13 @@ bigbreak
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
+OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
+OffsetArrays = "~1.12.7"
 Plots = "~1.29.0"
 PlutoUI = "~0.7.38"
 """
@@ -1429,6 +1529,12 @@ version = "1.0.0"
 [[NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 version = "1.2.0"
+
+[[OffsetArrays]]
+deps = ["Adapt"]
+git-tree-sha1 = "1ea784113a6aa054c5ebd95945fa5e52c2f378e7"
+uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+version = "1.12.7"
 
 [[Ogg_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1948,6 +2054,7 @@ version = "0.9.1+5"
 # ╟─866299e8-0403-11eb-085d-2b93459cc141
 # ╠═9a837b52-0425-11eb-231f-a74405ff6e23
 # ╠═a8dd5cae-0425-11eb-119c-bfcbf832d695
+# ╠═86821074-8760-4a56-a696-289d42249899
 # ╟─c4a8694a-04d4-11eb-1eef-c9e037e6b21f
 # ╟─8692bf42-0403-11eb-191f-b7d08895274f
 # ╠═7946d83a-04a0-11eb-224b-2b315e87bc84
@@ -1984,7 +2091,6 @@ version = "0.9.1+5"
 # ╟─bf6fd176-04cc-11eb-008a-2fb6ff70a9cb
 # ╠═38b1aa5a-04cf-11eb-11a2-930741fc9076
 # ╟─80e6f1e0-04b1-11eb-0d4e-475f1d80c2bb
-# ╠═d61415ec-5313-4c7e-a51e-0b7a90c89bec
 # ╠═80c2cd88-04b1-11eb-326e-0120a39405ea
 # ╠═9cd2bb00-04b1-11eb-1d83-a703907141a7
 # ╟─9cf9080a-04b1-11eb-12a0-17013f2d37f5
@@ -2011,19 +2117,30 @@ version = "0.9.1+5"
 # ╠═1af6fb58-58c8-4da5-9b4b-702a973e0ae1
 # ╠═2940d531-8920-42e4-8bf3-edb98eafbc7c
 # ╟─9611ca24-0403-11eb-3582-b7e3bb243e62
-# ╠═26e2978e-0435-11eb-0d61-25f552d2771e
-# ╠═d7cd213d-5344-4403-a0f6-ea53700f5973
-# ╠═32904857-9061-4f2d-9206-52e7c85fd5b9
+# ╟─32904857-9061-4f2d-9206-52e7c85fd5b9
+# ╠═b52350b8-a25c-4d6b-a685-a207b6d7ad7c
+# ╠═1bd82b7c-19b9-4888-bf95-44c0e3ddec80
+# ╠═8d4d47b8-c348-4447-bd3d-f5cffcdc6a08
+# ╠═c4b3323f-8599-4def-aa2b-525444ecccd5
+# ╠═ee88e121-190b-42fc-8c2d-1c45c893bc10
+# ╠═1fd12df0-a7bf-4c65-85cd-9a9c42443f69
 # ╟─9635c944-0403-11eb-3982-4df509f6a556
-# ╠═4ad11052-042c-11eb-3643-8b2b3e1269bc
+# ╟─4ad11052-042c-11eb-3643-8b2b3e1269bc
 # ╟─61c00724-0403-11eb-228d-17c11670e5d1
 # ╠═8dd97820-04a5-11eb-36c0-8f92d4b859a8
 # ╟─99ef7b2a-0403-11eb-08ef-e1023cd151ae
 # ╠═bbb103d5-c8f9-485b-9337-40892bb60506
 # ╟─9a13b17c-0403-11eb-024f-9b37e95e211b
+# ╠═91bac7ae-d522-4bc5-b927-8ab346126a58
+# ╠═fcf3fae5-3540-4927-b29a-a6573d01dade
+# ╠═8a4b17f2-5d6c-44cb-a138-aa140c98f798
 # ╠═1ac4b33a-0435-11eb-36f8-8f3f81ae7844
+# ╠═df939632-6cfa-48b2-bf4b-6580ce281130
+# ╠═ceb82c7a-1814-4707-8211-3d95a6ef36bc
+# ╠═424c2f22-ca05-499b-92b6-541b929e7e99
 # ╟─9a377b32-0403-11eb-2799-e7e59caa6a45
 # ╠═21c50840-0435-11eb-1307-7138ecde0691
+# ╟─49f812f4-c1cc-4d1b-803b-07680acc9235
 # ╟─5689841e-0414-11eb-0492-63c77ddbd136
 # ╟─531d13c2-0414-11eb-0acd-4905a684869d
 # ╟─4f19e872-0414-11eb-0dfd-e53d2aecc4dc
