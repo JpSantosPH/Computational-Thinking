@@ -1119,15 +1119,15 @@ bigbreak
 # ╔═╡ a5234680-8b02-11eb-2574-15489d0d49ea
 bigbreak
 
-# ╔═╡ 2962c6da-feda-4d65-918b-d3b178a18fa0
-begin
-	fruits = ["🍒", "🍐", "🍋"]
-	length(fruits)
-end
-
 # ╔═╡ 887a5106-c44a-4437-8c6f-04ad6610738a
 begin
 	fruits = ["🍉"]
+	length(fruits)
+end
+
+# ╔═╡ 2962c6da-feda-4d65-918b-d3b178a18fa0
+begin
+	fruits = ["🍒", "🍐", "🍋"]
 	length(fruits)
 end
 
