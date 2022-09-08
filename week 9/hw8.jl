@@ -40,7 +40,7 @@ Feel free to ask questions!
 # ╔═╡ 0587db1c-106a-11eb-0560-c3d53c516805
 # edit the code below to set your name and kerberos ID (i.e. email without @mit.edu)
 
-student = (name = "Jazzy Doe", kerberos_id = "jazz")
+student = (name = "John Paul", kerberos_id = "idk")
 
 # you might need to wait until all other cells in this notebook have completed running. 
 # scroll around the page to see what's up
@@ -104,12 +104,15 @@ md"""
 
 # ╔═╡ d217a4b6-12e8-11eb-29ce-53ae143a39cd
 function finite_difference_slope(f::Function, a, h=1e-3)
-	
-	return missing
+	m = (f(a + h) - f(a)) / h
+	return m
 end
 
 # ╔═╡ f0576e48-1261-11eb-0579-0b1372565ca7
 finite_difference_slope(sqrt, 4.0, 5.0)
+
+# ╔═╡ d1983aa5-044f-4811-9448-ffbf7c3dcece
+finite_difference_slope(sqrt, 4.0)
 
 # ╔═╡ bf8a4556-112b-11eb-042e-d705a2ca922a
 md"""
@@ -118,7 +121,7 @@ md"""
 
 # ╔═╡ cbf0a27a-12e8-11eb-379d-85550b942ceb
 function tangent_line(f, a, h)
-	
+
 	return missing
 end
 
@@ -2165,12 +2168,13 @@ version = "0.9.1+5"
 # ╟─2a4050f6-112b-11eb-368a-f91d7a023c9d
 # ╠═d217a4b6-12e8-11eb-29ce-53ae143a39cd
 # ╠═f0576e48-1261-11eb-0579-0b1372565ca7
+# ╠═d1983aa5-044f-4811-9448-ffbf7c3dcece
 # ╟─cd7583b0-1261-11eb-2a98-537bfab2463e
 # ╟─bf8a4556-112b-11eb-042e-d705a2ca922a
 # ╟─0f0b7ec4-112c-11eb-3399-59e22df07355
 # ╠═cbf0a27a-12e8-11eb-379d-85550b942ceb
 # ╟─66198242-1262-11eb-1b0f-37c58199c754
-# ╟─abc54b82-10b9-11eb-1641-817e2f043d26
+# ╠═abc54b82-10b9-11eb-1641-817e2f043d26
 # ╟─3d44c264-10b9-11eb-0895-dbfc22ba0c37
 # ╠═2b79b698-10b9-11eb-3bde-53fc1c48d5f7
 # ╟─a732bbcc-112c-11eb-1d65-110c049e226c
