@@ -340,11 +340,14 @@ r(t+h) &= r(t) + h\,\cdot \gamma i(t)
 # ╔═╡ 1e5ca54e-12d8-11eb-18b8-39b909584c72
 function euler_SIR_step(β, γ, sir_0::Vector, h=1e-3::Number)
 	s, i, r = sir_0
+		s₁ = s - h * (β * s * i)
+		i₁ = i + h * (β * s * i - γ * i)
+		r₁ = r + h * γ * i
 	
 	return [
-		missing,
-		missing,
-		missing,
+		s₁,
+		i₁,
+		r₁,
 	]
 end
 
@@ -364,14 +367,20 @@ You should return a vector of vectors: a 3-element vector for each point in time
 function euler_SIR(β, γ, sir_0::Vector, T::AbstractRange)
 	# T is a range, you get the step size and number of steps like so:
 	h = step(T)
-	
 	num_steps = length(T)
 	
-	return missing
+	SIR = []
+	sir = sir_0
+	for i in 1:num_steps
+		push!(SIR, sir)
+        sir = euler_SIR_step(β, γ, SIR[i], h)
+	end
+
+	return SIR
 end
 
 # ╔═╡ 4b791b76-12cd-11eb-1260-039c938f5443
-sir_T = 0 : 0.1 : 60.0
+sir_T = 0 : 0.1 : 100.0
 
 # ╔═╡ 0a095a94-1245-11eb-001a-b908128532aa
 sir_results = euler_SIR(0.3, 0.15, 
@@ -406,7 +415,7 @@ md"""
 
 # ╔═╡ 589b2b4c-1245-11eb-1ec7-693c6bda97c4
 default_SIR_parameters_observation = md"""
-_your answer here_
+Yes, there is an epidemic outbreak. It seems like the number of infected are declining if the time were longer. Not everybody gets infected but more than 75% of the population did.
 """
 
 # ╔═╡ 58b45a0e-1245-11eb-04d1-23a1f3a0f242
@@ -414,8 +423,22 @@ md"""
 👉 Make an interactive visualization, similar to the above plot, in which you vary $\beta$ and $\gamma$ via sliders. What relation should $\beta$ and $\gamma$ have for an epidemic outbreak to occur?
 """
 
-# ╔═╡ 68274534-1103-11eb-0d62-f1acb57721bc
+# ╔═╡ 5d48926c-f1f9-4670-bc94-848e55b5243e
+@bind β₂ Slider(0.01:0.01:1, show_value=true)
 
+# ╔═╡ c4c8a08c-c9d0-4a83-b048-9970cee0b719
+@bind γ₂ Slider(0.01:0.01:1, show_value=true)
+
+# ╔═╡ 5a4f0f3f-9c51-4577-bad2-473c4312d050
+sir_T_2 = 0 : 0.1 : 100.0
+
+# ╔═╡ 68274534-1103-11eb-0d62-f1acb57721bc
+sir_results_2 = euler_SIR(β₂, γ₂, 
+	[0.99, 0.01, 0.00], 
+	sir_T_2)
+
+# ╔═╡ 57b87bf7-13d3-4383-bf04-278b439c6f7c
+plot_sir!(plot(), sir_T_2, sir_results_2)
 
 # ╔═╡ 82539bbe-106e-11eb-0e9e-170dfa6a7dad
 md"""
@@ -437,7 +460,7 @@ You should use **anonymous functions** for this. These have the form `x -> x^2`,
 """
 
 # ╔═╡ bd8522c6-12e8-11eb-306c-c764f78486ef
-function ∂x(f::Function, a, b)
+function ∂x(f::Function, a, b, h=1e-3::Number)
 	
 	return missing
 end
@@ -2212,12 +2235,16 @@ version = "0.9.1+5"
 # ╠═4b791b76-12cd-11eb-1260-039c938f5443
 # ╠═0a095a94-1245-11eb-001a-b908128532aa
 # ╟─51c9a25e-1244-11eb-014f-0bcce2273cee
-# ╟─58675b3c-1245-11eb-3548-c9cb8a6b3188
+# ╠═58675b3c-1245-11eb-3548-c9cb8a6b3188
 # ╟─b4bb4b3a-12ce-11eb-3fe5-ad7ccd73febb
 # ╟─586d0352-1245-11eb-2504-05d0aa2352c6
 # ╟─589b2b4c-1245-11eb-1ec7-693c6bda97c4
 # ╟─58b45a0e-1245-11eb-04d1-23a1f3a0f242
+# ╠═5d48926c-f1f9-4670-bc94-848e55b5243e
+# ╠═c4c8a08c-c9d0-4a83-b048-9970cee0b719
+# ╠═57b87bf7-13d3-4383-bf04-278b439c6f7c
 # ╠═68274534-1103-11eb-0d62-f1acb57721bc
+# ╠═5a4f0f3f-9c51-4577-bad2-473c4312d050
 # ╟─82539bbe-106e-11eb-0e9e-170dfa6a7dad
 # ╟─b394b44e-1245-11eb-2f86-8d10113e8cfc
 # ╠═bd8522c6-12e8-11eb-306c-c764f78486ef
