@@ -120,10 +120,16 @@ md"""
 """
 
 # ╔═╡ cbf0a27a-12e8-11eb-379d-85550b942ceb
-function tangent_line(f, a, h)
-
-	return missing
+function tangent_line(f::Function, a, h=1e-3)
+    m = finite_difference_slope(f, a, h)
+	return Δf(x) = m * (x - a) + f(a)
 end
+
+# ╔═╡ c9535ad6-10b9-11eb-0537-45f13931cd71
+@bind log_h Slider(-16:0.01:.5, default=-.5)
+
+# ╔═╡ 7495af52-10ba-11eb-245f-a98781ba123c
+h_finite_diff = 10.0^log_h
 
 # ╔═╡ 2b79b698-10b9-11eb-3bde-53fc1c48d5f7
 # this is our test function
@@ -135,12 +141,6 @@ The slider below controls ``h`` using a _log scale_. In the (mathematical) defin
 
 Notice that, as you decrease ``h``, the tangent line gets more accurate, but what happens if you make ``h`` too small?
 """
-
-# ╔═╡ c9535ad6-10b9-11eb-0537-45f13931cd71
-@bind log_h Slider(-16:0.01:.5, default=-.5)
-
-# ╔═╡ 7495af52-10ba-11eb-245f-a98781ba123c
-h_finite_diff = 10.0^log_h
 
 # ╔═╡ 327de976-10b9-11eb-1916-69ad75fc8dc4
 zeroten = LinRange(0.0, 10.0, 300);
@@ -217,10 +217,10 @@ Using this formula, we only need to know the _value_ ``f(a)`` and the _slope_ ``
 """
 
 # ╔═╡ fa320028-12c4-11eb-0156-773e2aba8e58
-function euler_integrate_step(fprime::Function, fa::Number, 
-		a::Number, h::Number)
-	
-	return missing
+function euler_integrate_step(Δf::Function, fa::Number, 
+        a::Number, h=1e-3::Number)
+    f(x) = h * Δf(a+h) + fa
+    return f(a+h)
 end
 
 # ╔═╡ 2335cae6-112f-11eb-3c2c-254e82014567
@@ -229,13 +229,21 @@ md"""
 """
 
 # ╔═╡ fff7754c-12c4-11eb-2521-052af1946b66
-function euler_integrate(fprime::Function, fa::Number, 
+function euler_integrate(Δf::Function, fa::Number, 
 		T::AbstractRange)
-	
+
 	a0 = T[1]
 	h = step(T)
+
+	F = []
+	for t in T
+		p = euler_integrate_step(Δf, fa, a0, h)
+		push!(F, p)
+		a0 += h
+		fa = euler_integrate_step(Δf, fa, a0, h)
+	end
 	
-	return missing
+	return F
 end
 
 # ╔═╡ 4d0efa66-12c6-11eb-2027-53d34c68d5b0
@@ -254,12 +262,12 @@ euler_test = let
 end
 
 # ╔═╡ ab72fdbe-10be-11eb-3b33-eb4ab41730d6
-@bind N_euler Slider(2:40)
+@bind N_euler Slider(2:4000)
 
 # ╔═╡ 990236e0-10be-11eb-333a-d3080a224d34
 let
 	a = 1
-	h = .3
+	h = .01
 	history = euler_integrate(wavy_deriv, wavy(a), range(a; step=h, length=N_euler))
 	
 	slope = wavy_deriv(a_euler)
@@ -330,7 +338,7 @@ r(t+h) &= r(t) + h\,\cdot \gamma i(t)
 """
 
 # ╔═╡ 1e5ca54e-12d8-11eb-18b8-39b909584c72
-function euler_SIR_step(β, γ, sir_0::Vector, h::Number)
+function euler_SIR_step(β, γ, sir_0::Vector, h=1e-3::Number)
 	s, i, r = sir_0
 	
 	return [
@@ -2176,10 +2184,10 @@ version = "0.9.1+5"
 # ╟─66198242-1262-11eb-1b0f-37c58199c754
 # ╠═abc54b82-10b9-11eb-1641-817e2f043d26
 # ╟─3d44c264-10b9-11eb-0895-dbfc22ba0c37
+# ╟─7495af52-10ba-11eb-245f-a98781ba123c
+# ╟─c9535ad6-10b9-11eb-0537-45f13931cd71
 # ╠═2b79b698-10b9-11eb-3bde-53fc1c48d5f7
 # ╟─a732bbcc-112c-11eb-1d65-110c049e226c
-# ╟─c9535ad6-10b9-11eb-0537-45f13931cd71
-# ╟─7495af52-10ba-11eb-245f-a98781ba123c
 # ╟─327de976-10b9-11eb-1916-69ad75fc8dc4
 # ╟─43df67bc-10bb-11eb-1cbd-cd962a01e3ee
 # ╠═d5a8bd48-10bf-11eb-2291-fdaaff56e4e6
@@ -2193,8 +2201,8 @@ version = "0.9.1+5"
 # ╟─4d0efa66-12c6-11eb-2027-53d34c68d5b0
 # ╠═b74d94b8-10bf-11eb-38c1-9f39dfcb1096
 # ╟─15b50428-1264-11eb-163e-23e2f3590502
-# ╟─ab72fdbe-10be-11eb-3b33-eb4ab41730d6
-# ╟─990236e0-10be-11eb-333a-d3080a224d34
+# ╠═ab72fdbe-10be-11eb-3b33-eb4ab41730d6
+# ╠═990236e0-10be-11eb-333a-d3080a224d34
 # ╟─d21fad2a-1253-11eb-304a-2bacf9064d0d
 # ╟─518fb3aa-106e-11eb-0fcd-31091a8f12db
 # ╠═1e5ca54e-12d8-11eb-18b8-39b909584c72
