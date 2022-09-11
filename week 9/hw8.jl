@@ -104,8 +104,7 @@ md"""
 
 # ╔═╡ d217a4b6-12e8-11eb-29ce-53ae143a39cd
 function finite_difference_slope(f::Function, a, h=1e-3)
-	m = (f(a + h) - f(a)) / h
-	return m
+	return (f(a + h) - f(a)) / h
 end
 
 # ╔═╡ f0576e48-1261-11eb-0579-0b1372565ca7
@@ -338,7 +337,7 @@ r(t+h) &= r(t) + h\,\cdot \gamma i(t)
 """
 
 # ╔═╡ 1e5ca54e-12d8-11eb-18b8-39b909584c72
-function euler_SIR_step(β, γ, sir_0::Vector, h=1e-3::Number)
+function euler_SIR_step(β, γ, sir_0::Vector, h=1e-4::Number)
 	s, i, r = sir_0
 		s₁ = s - h * (β * s * i)
 		i₁ = i + h * (β * s * i - γ * i)
@@ -460,9 +459,9 @@ You should use **anonymous functions** for this. These have the form `x -> x^2`,
 """
 
 # ╔═╡ bd8522c6-12e8-11eb-306c-c764f78486ef
-function ∂x(f::Function, a, b, h=1e-3::Number)
-	
-	return missing
+function ∂x(f::Function, a, b, h=1e-3::Number)	
+	f₂ = x -> f(x, b)
+	return finite_difference_slope(f₂, a, h)
 end
 
 # ╔═╡ 321964ac-126d-11eb-0a04-0d3e3fb9b17c
@@ -472,9 +471,9 @@ end
 )
 
 # ╔═╡ b7d3aa8c-12e8-11eb-3430-ff5d7df6a122
-function ∂y(f::Function, a, b)
-	
-	return missing
+function ∂y(f::Function, a, b, h=1e-3::Number)
+	f₂ = y -> f(a, y)
+	return finite_difference_slope(f₂, b, h)
 end
 
 # ╔═╡ a15509ee-126c-11eb-1fa3-cdda55a47fcb
@@ -490,9 +489,10 @@ md"""
 """
 
 # ╔═╡ adbf65fe-12e8-11eb-04e9-3d763ba91a63
-function gradient(f::Function, a, b)
-	
-	return missing
+function gradient(f::Function, a, b, h=1e-3::Number)
+	x′ = ∂x(f, a, b, h)
+	y′ = ∂y(f, a, b, h)
+	return [x′, y′]
 end
 
 # ╔═╡ 66b8e15e-126c-11eb-095e-39c2f6abc81d
@@ -500,6 +500,9 @@ gradient(
 	(x, y) -> 7x^2 + y, 
 	3, 7
 )
+
+# ╔═╡ dad07098-47bd-4a60-af31-faa025666390
+
 
 # ╔═╡ 82579b90-106e-11eb-0018-4553c29e57a2
 md"""
@@ -518,9 +521,10 @@ We want to minimize a 1D function, i.e. a function $f: \mathbb{R} \to \mathbb{R}
 """
 
 # ╔═╡ a7f1829c-12e8-11eb-15a1-5de40ed92587
-function gradient_descent_1d_step(f, x0; η=0.01)
-	
-	return missing
+function gradient_descent_1d_step(f, x₀, h=1e-3::Number; η=0.01)
+	m = finite_difference_slope(f, x₀, h)
+	step = x₀ - η*m
+	return step
 end
 
 # ╔═╡ d33271a2-12df-11eb-172a-bd5600265f49
@@ -572,9 +576,14 @@ md"""
 """
 
 # ╔═╡ 9489009a-12e8-11eb-2fb7-97ba0bdf339c
-function gradient_descent_1d(f, x0; η=0.01, N_steps=1000)
+function gradient_descent_1d(f, x₀, h=1e-3::Number; η=0.01, N_steps=1000)
+	x = x₀
 	
-	return missing
+	for i in 1:N_steps
+	x = gradient_descent_1d_step(f, x, h, η=η)
+	end
+	
+	return x
 end
 
 # ╔═╡ 34dc4b02-1248-11eb-26b2-5d2610cfeb41
@@ -591,7 +600,7 @@ Right now we take a fixed number of steps, even if the minimum is found quickly.
 
 # ╔═╡ ebca11d8-12c9-11eb-3dde-c546eccf40fc
 better_stopping_idea = md"""
-_your answer here_
+We could add an if statement that breaks the for loop if the slope at point x is approximately 0.
 """
 
 # ╔═╡ 9fd2956a-1248-11eb-266d-f558cda55702
@@ -603,15 +612,30 @@ Multivariable calculus tells us that the gradient $\nabla f(a, b)$ at a point $(
 """
 
 # ╔═╡ 852be3c4-12e8-11eb-1bbb-5fbc0da74567
-function gradient_descent_2d_step(f, x0, y0; η=0.01)
+function gradient_descent_2d_step(f, x₀, y₀, h=1e-3::Number; η=0.01)
+	x′, y′ = gradient(f, x₀, y₀, h)
+	x_step = x₀ - η*x′
+	y_step = y₀ - η*y′
 	
-	return missing
+	steps = [x_step, y_step]
+	return steps
 end
 
 # ╔═╡ 8a114ca8-12e8-11eb-2de6-9149d1d3bc3d
-function gradient_descent_2d(f, x0, y0; η=0.01)
+function gradient_descent_2d(f, x₀, y₀, h=1e-3::Number; η=0.01, N_steps=1000, stop=true)
+	x = x₀
+	y = y₀
 	
-	return missing
+	for i in 1:N_steps
+		x_prev, y_prev = x, y
+		x, y = gradient_descent_2d_step(f, x, y, h, η=η)
+		
+		if x_prev ≈ x && y_prev ≈ y && stop
+			return [x, y]
+		end
+	end
+	
+	return [x, y]
 end
 
 # ╔═╡ 4454c2b2-12e3-11eb-012c-c362c4676bf6
@@ -628,6 +652,9 @@ himmelbau(x, y) = (x^2 + y - 11)^2 + (x + y^2 - 7)^2
 
 # ╔═╡ 92854562-1249-11eb-0b81-156982df1284
 gradient_descent_2d(himmelbau, 0, 0)
+
+# ╔═╡ a93697c0-5598-4349-b6e6-bc967650f7f3
+gradient_descent_2d(himmelbau, x0_gradient_2d, y0_gradient_2d, N_steps = 1e6)
 
 # ╔═╡ 7e318fea-12e7-11eb-3490-b17e0d4dbc50
 md"""
@@ -700,13 +727,33 @@ end
 # ╔═╡ fbb4a9a4-1248-11eb-00e2-fd346f0056db
 gradient_2d_viz_2d(N_gradient_2d, x0_gradient_2d, y0_gradient_2d)
 
+# ╔═╡ c2c2225f-88e1-4875-b5da-19e4b693368a
+function find_minimas(f::Function, xrange::AbstractRange, yrange::AbstractRange, h=1e-3::Number; η=0.01, N_steps=1e6, sigdigits=6)
+	minimas = []
+	
+	for x in xrange
+		for y in yrange
+			minima = gradient_descent_2d(f, x, y, η=η, N_steps=N_steps)
+			minima = round.(minima, sigdigits=sigdigits)
+			if !(minima ∈ minimas)
+				push!(minimas, minima)
+			end
+		end
+	end
+
+	return collect(minimas)	
+end
+
 # ╔═╡ a03890d6-1248-11eb-37ee-85b0a5273e0c
 md"""
 👉 Can you find different minima?
 """
 
 # ╔═╡ 6d1ee93e-1103-11eb-140f-63fca63f8b06
+find_minimas(himmelbau, -4:.1:4, -4:.1:4, N_steps=1e6)
 
+# ╔═╡ 4876abce-c21e-482d-945d-e1cc08615e9d
+gradient(himmelbau, -3.77998, -3.2839)
 
 # ╔═╡ 8261eb92-106e-11eb-2ccc-1348f232f5c3
 md"""
@@ -779,10 +826,15 @@ What we just did was adjusting the function parameters until we found the best p
 $$\mathcal{L}(\mu, \sigma) := \sum_i [f_{\mu, \sigma}(x_i) - y_i]^2$$
 """
 
+# ╔═╡ 8227154e-ff3e-4f3a-af88-173457189db4
+gauss(35, 35.0, 5.5)
+
 # ╔═╡ 2fc55daa-124f-11eb-399e-659e59148ef5
 function loss_dice(μ, σ)
+	x = collect(dice_x)
+	y = dice_y
 	
-	return missing
+	return sum( (gauss(x[i], μ, σ) - y[i])^2 for i ∈ eachindex(x) )
 end
 
 # ╔═╡ 3a6ec2e4-124f-11eb-0f68-791475bab5cd
@@ -797,9 +849,9 @@ md"""
 # ╔═╡ a150fd60-124f-11eb-35d6-85104bcfd0fe
 found_μ, found_σ = let
 	
-	# your code here
+	μ, σ = gradient_descent_2d(loss_dice, 30, 1, 1e-4, N_steps=1e6, stop=false)
 	
-	missing, missing
+	μ, σ
 end
 
 # ╔═╡ ac320522-124b-11eb-1552-51c2adaf2521
@@ -885,8 +937,12 @@ This time, instead of comparing two vectors of numbers, we need to compare two v
 
 # ╔═╡ 754b5368-12e8-11eb-0763-e3ec56562c5f
 function loss_sir(β, γ)
+	x = spatial_T
+	y = spatial_results
+	guess_SIR =  euler_SIR(β, γ, [0.99, 0.01, 0.00], x)
 	
-	return missing
+	
+	return sum(sum((guess_SIR[i] .- y[i]).^2) for i ∈ x)
 end
 
 # ╔═╡ ee20199a-12d4-11eb-1c2c-3f571bbb232e
@@ -900,9 +956,9 @@ md"""
 # ╔═╡ 6e1b5b6a-12e8-11eb-3655-fb10c4566cdc
 found_β, found_γ = let
 	
-	# your code here
+	β, γ = gradient_descent_2d(loss_sir, 0.0188, 0.002, 1e-3, η=1e-12, N_steps=1e3, stop=true)
 	
-	missing, missing
+	β, γ
 end
 
 # ╔═╡ 496b8816-12d3-11eb-3cec-c777ba81eb60
@@ -930,6 +986,9 @@ let
 	
 	as_svg(p)
 end
+
+# ╔═╡ 596c4cdd-a1f5-4f44-a68c-1b8157ce767c
+loss_sir(found_β, found_γ)
 
 # ╔═╡ b94b7610-106d-11eb-2852-25337ce6ec3a
 if student.name == "Jazzy Doe" || student.kerberos_id == "jazz"
@@ -2256,7 +2315,8 @@ version = "0.9.1+5"
 # ╟─b398a29a-1245-11eb-1476-ab65e92d1bc8
 # ╠═adbf65fe-12e8-11eb-04e9-3d763ba91a63
 # ╠═66b8e15e-126c-11eb-095e-39c2f6abc81d
-# ╟─46b07b1c-126d-11eb-0966-6ff5ab87ac9d
+# ╠═dad07098-47bd-4a60-af31-faa025666390
+# ╠═46b07b1c-126d-11eb-0966-6ff5ab87ac9d
 # ╟─82579b90-106e-11eb-0018-4553c29e57a2
 # ╠═a7f1829c-12e8-11eb-15a1-5de40ed92587
 # ╠═d33271a2-12df-11eb-172a-bd5600265f49
@@ -2276,17 +2336,20 @@ version = "0.9.1+5"
 # ╠═8a114ca8-12e8-11eb-2de6-9149d1d3bc3d
 # ╠═92854562-1249-11eb-0b81-156982df1284
 # ╠═4454c2b2-12e3-11eb-012c-c362c4676bf6
-# ╟─fbb4a9a4-1248-11eb-00e2-fd346f0056db
-# ╟─4aace1a8-12e3-11eb-3e07-b5827a2a6765
-# ╟─54a58f84-12e3-11eb-10b9-7d55a16c81ba
+# ╠═fbb4a9a4-1248-11eb-00e2-fd346f0056db
+# ╠═4aace1a8-12e3-11eb-3e07-b5827a2a6765
+# ╠═54a58f84-12e3-11eb-10b9-7d55a16c81ba
+# ╠═a93697c0-5598-4349-b6e6-bc967650f7f3
 # ╠═a0045046-1248-11eb-13bd-8b8ad861b29a
 # ╟─7e318fea-12e7-11eb-3490-b17e0d4dbc50
 # ╠═605aafa4-12e7-11eb-2d13-7f7db3fac439
 # ╟─9ae4ebac-12e3-11eb-0acc-23113f5264a9
 # ╟─5e0f16b4-12e3-11eb-212f-e565f97adfed
 # ╟─b6ae4d7e-12e6-11eb-1f92-c95c040d4401
+# ╠═c2c2225f-88e1-4875-b5da-19e4b693368a
 # ╟─a03890d6-1248-11eb-37ee-85b0a5273e0c
 # ╠═6d1ee93e-1103-11eb-140f-63fca63f8b06
+# ╠═4876abce-c21e-482d-945d-e1cc08615e9d
 # ╟─8261eb92-106e-11eb-2ccc-1348f232f5c3
 # ╠═65e691e4-124a-11eb-38b1-b1732403aa3d
 # ╟─6f4aa432-1103-11eb-13da-fdd9eefc7c86
@@ -2298,6 +2361,7 @@ version = "0.9.1+5"
 # ╟─41b2262a-124e-11eb-2634-4385e2f3c6b6
 # ╠═0dea1f70-124c-11eb-1593-e535ab21976c
 # ╟─471cbd84-124c-11eb-356e-371d23011af5
+# ╠═8227154e-ff3e-4f3a-af88-173457189db4
 # ╠═2fc55daa-124f-11eb-399e-659e59148ef5
 # ╠═3a6ec2e4-124f-11eb-0f68-791475bab5cd
 # ╟─2fcb93aa-124f-11eb-10de-55fced6f4b83
@@ -2307,7 +2371,7 @@ version = "0.9.1+5"
 # ╠═e55d9c1e-1267-11eb-1b3c-5d772662518a
 # ╟─a737990a-1251-11eb-1114-c57ceee75181
 # ╟─65aa13fe-1266-11eb-03c2-5927dbeca36e
-# ╟─6faf4074-1266-11eb-1a0a-991fc2e991bb
+# ╠═6faf4074-1266-11eb-1a0a-991fc2e991bb
 # ╟─826bb0dc-106e-11eb-29eb-03e7ddf9e4b5
 # ╠═04364dee-12cb-11eb-2f94-bfd3fb405907
 # ╠═249c297c-12ce-11eb-2054-d1e926335148
@@ -2320,9 +2384,10 @@ version = "0.9.1+5"
 # ╟─6016fccc-12d4-11eb-0f58-b9cd331cc7b3
 # ╠═754b5368-12e8-11eb-0763-e3ec56562c5f
 # ╠═ee20199a-12d4-11eb-1c2c-3f571bbb232e
+# ╠═596c4cdd-a1f5-4f44-a68c-1b8157ce767c
 # ╟─38b09bd8-12d5-11eb-2f7b-579e9db3973d
 # ╠═6e1b5b6a-12e8-11eb-3655-fb10c4566cdc
-# ╟─106670f2-12d6-11eb-1854-5bf0fc6f4dfb
+# ╠═106670f2-12d6-11eb-1854-5bf0fc6f4dfb
 # ╟─b94b7610-106d-11eb-2852-25337ce6ec3a
 # ╟─b94f9df8-106d-11eb-3be8-c5a1bb79d0d4
 # ╟─b9586d66-106d-11eb-0204-a91c8f8355f7
