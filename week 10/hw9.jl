@@ -95,6 +95,28 @@ md"""
 # ╔═╡ b2f90634-0a68-11eb-1618-0b42f956b5a7
 origin = Coordinate(0, 0)
 
+# ╔═╡ bba4ff76-4a4f-4a76-b006-2e175ab70c56
+function Base.rand(Coordinate, r₁::AbstractRange, r₂::AbstractRange, N::Integer)
+    n = abs(N)
+    l₁ = length(r₁)
+    l₂ = length(r₂)
+
+	coordinates = Coordinate[]
+	for i in 1:N
+		x = rand(r₁)
+		y = rand(r₂)
+		push!(coordinates, Coordinate(x, y))
+	end
+	    
+	return coordinates
+end
+
+# ╔═╡ 4cfabb4f-cf5d-4784-8e65-d5021212a165
+Base.rand(Coordinate, r::AbstractRange, N::Integer) = rand(Coordinate, r, r, N)
+
+# ╔═╡ 119535d9-2548-498b-b37b-e2341de0fcf2
+rand(1:10, 20)
+
 # ╔═╡ 3e858990-0954-11eb-3d10-d10175d8ca1c
 md"""
 👉 Write a function `make_tuple` that takes an object of type `Coordinate` and returns the corresponding tuple `(x, y)`. Boring, but useful later!
@@ -152,7 +174,7 @@ end
 +
 
 # ╔═╡ ec8e4daa-0a2c-11eb-20e1-c5957e1feba3
-# Coordinate(3,4) + Coordinate(10,10) # uncomment to check + works
+ Coordinate(3,4) + Coordinate(10,10) # uncomment to check + works
 
 # ╔═╡ e144e9d0-0a2d-11eb-016e-0b79eba4b2bb
 md"""
@@ -166,14 +188,12 @@ In our model, agents will be able to walk in 4 directions: up, down, left and ri
 """
 
 # ╔═╡ 5278e232-0972-11eb-19ff-a1a195127297
-# uncomment this:
-
-# possible_moves = [
-# 	Coordinate( 1, 0), 
-# 	Coordinate( 0, 1), 
-# 	Coordinate(-1, 0), 
-# 	Coordinate( 0,-1),
-# ]
+ possible_moves = [
+ 	Coordinate( 1, 0), 
+ 	Coordinate( 0, 1), 
+ 	Coordinate(-1, 0), 
+ 	Coordinate( 0,-1),
+ ]
 
 # ╔═╡ 71c9788c-0aeb-11eb-28d2-8dcc3f6abacd
 md"""
@@ -181,7 +201,7 @@ md"""
 """
 
 # ╔═╡ 69151ce6-0aeb-11eb-3a53-290ba46add96
-
+Coordinate(4,5) + rand(possible_moves) 
 
 # ╔═╡ 3eb46664-0954-11eb-31d8-d9c0b74cf62b
 md"""
@@ -198,41 +218,22 @@ Possible steps:
 """
 
 # ╔═╡ edf86a0e-0a68-11eb-2ad3-dbf020037019
-# function trajectory(w::Coordinate, n::Int)
+function trajectory(w::Coordinate, n::Int)
+	random_moves = rand(possible_moves, n)
+	trajectory = accumulate(+, random_moves, init=w)
 	
-# 	return missing
-# end
-
-# ╔═╡ 44107808-096c-11eb-013f-7b79a90aaac8
-# test_trajectory = trajectory(Coordinate(4,4), 30) # uncomment to test
+	return trajectory
+end
 
 # ╔═╡ 478309f4-0a31-11eb-08ea-ade1755f53e0
 function plot_trajectory!(p::Plots.Plot, trajectory::Vector; kwargs...)
 	plot!(p, make_tuple.(trajectory); 
 		label=nothing, 
 		linewidth=2, 
+		color = "red",
 		linealpha=LinRange(1.0, 0.2, length(trajectory)),
 		kwargs...)
 end
-
-# ╔═╡ 87ea0868-0a35-11eb-0ea8-63e27d8eda6e
-try
-	p = plot(ratio=1, size=(650, 200))
-	plot_trajectory!(p, test_trajectory; color="black", showaxis=false, axis=nothing, linewidth=4)
-	p
-catch
-end
-
-# ╔═╡ 51788e8e-0a31-11eb-027e-fd9b0dc716b5
-# 	let
-# 		long_trajectory = trajectory(Coordinate(4,4), 1000)
-
-# 		p = plot(ratio=1)
-# 		plot_trajectory!(p, long_trajectory)
-# 		p
-# 	end
-
-# ^ uncomment to visualize a trajectory
 
 # ╔═╡ 3ebd436c-0954-11eb-170d-1d468e2c7a37
 md"""
@@ -255,9 +256,6 @@ end
 ```
 """
 
-# ╔═╡ dcefc6fe-0a3f-11eb-2a96-ddf9c0891873
-
-
 # ╔═╡ b4d5da4a-09a0-11eb-1949-a5807c11c76c
 md"""
 #### Exercise 1.5
@@ -271,13 +269,26 @@ One relatively simple boundary condition is a **collision boundary**:
 """
 
 # ╔═╡ 0237ebac-0a69-11eb-2272-35ea4e845d84
-# function collide_boundary(c::Coordinate, L::Number)
+function collide_boundary(c::Coordinate, L::Number)
+	x = c.x
+	y = c.y
 	
-# 	return missing
-# end
+	in_x = -L ≤ x ≤ L
+	in_y = -L ≤ y ≤ L
+
+	if !in_x
+		x = x ÷ abs(x) * L
+	end
+	
+	if !in_y
+		y = y ÷ abs(y) * L
+	end
+	
+	return Coordinate(x, y)
+end
 
 # ╔═╡ ad832360-0a40-11eb-2857-e7f0350f3b12
-# collide_boundary(Coordinate(12,4), 10) # uncomment to test
+collide_boundary(Coordinate(12,4), 10) # uncomment to test
 
 # ╔═╡ b4ed2362-09a0-11eb-0be9-99c91623b28f
 md"""
@@ -287,10 +298,49 @@ md"""
 """
 
 # ╔═╡ 0665aa3e-0a69-11eb-2b5d-cd718e3c7432
-# function trajectory(c::Coordinate, n::Int, L::Number)
+function trajectory(c::Coordinate, n::Int, L::Number)
+
+	positions = [c]
 	
-# 	return missing
-# end
+	for i in 1:n
+		step = rand(possible_moves)
+		new_position = collide_boundary(positions[i] + step, L)
+		push!(positions, new_position)
+	end
+	
+	return positions
+end
+
+# ╔═╡ 44107808-096c-11eb-013f-7b79a90aaac8
+test_trajectory = trajectory(Coordinate(4,4), 30) # uncomment to test
+
+# ╔═╡ 87ea0868-0a35-11eb-0ea8-63e27d8eda6e
+try
+	p = plot(ratio=1, size=(650, 200))
+	plot_trajectory!(p, test_trajectory; color="black", showaxis=false, axis=nothing, linewidth=4)
+	p
+catch
+end
+
+# ╔═╡ 51788e8e-0a31-11eb-027e-fd9b0dc716b5
+ 	let
+ 		long_trajectory = trajectory(Coordinate(4,4), 1000)
+
+ 		p = plot(ratio=1)
+ 		plot_trajectory!(p, long_trajectory)
+ 		p
+ 	end
+
+# ╔═╡ dcefc6fe-0a3f-11eb-2a96-ddf9c0891873
+let
+	p = plot(ratio=1)
+
+	for i in 1:10
+	plot_trajectory!(p, trajectory(Coordinate(0,0), 1000, 20))
+	end
+
+	p
+end
 
 # ╔═╡ 3ed06c80-0954-11eb-3aee-69e4ccdc4f9d
 md"""
@@ -304,10 +354,14 @@ Let's define a type `Agent`. `Agent` contains a `position` (of type `Coordinate`
 """
 
 # ╔═╡ 35537320-0a47-11eb-12b3-931310f18dec
-@enum InfectionStatus S I R
+	@enum InfectionStatus S I R
 
 # ╔═╡ cf2f3b98-09a0-11eb-032a-49cc8c15e89c
-# define agent struct here:
+mutable struct Agent
+	position::Coordinate
+	status::InfectionStatus
+	num_infected::Integer
+end
 
 # ╔═╡ 814e888a-0954-11eb-02e5-0964c7410d30
 md"""
@@ -317,14 +371,21 @@ md"""
 It returns a `Vector` of `N` randomly generated `Agent`s. Their coordinates are randomly sampled in the ``[-L,L] \times [-L,L]`` box, and the agents are all susceptible, except one, chosen at random, which is infectious.
 """
 
-# ╔═╡ 0cfae7ba-0a69-11eb-3690-d973d70e47f4
-# function initialize(N::Number, L::Number)
-	
-# 	return missing
-# end
+# ╔═╡ 55c9bb2f-49ad-4521-a0f0-63a2d1e0182d
+function set_status!(agent::Agent, new_status::InfectionStatus)
+	agent.status = new_status
+end
 
-# ╔═╡ 1d0f8eb4-0a46-11eb-38e7-63ecbadbfa20
-# initialize(3, 10)
+# ╔═╡ 0cfae7ba-0a69-11eb-3690-d973d70e47f4
+function initialize(N::Number, L::Number)
+	coordinates = rand(Coordinate, -L:L, N)
+	agents = [Agent(coordinates[i], S, 0) for i ∈ 1:N]
+	set_status!(rand(agents), I)
+	return agents
+end
+
+# ╔═╡ 04b9cb92-5e4a-45c2-8b1b-980047265133
+zz = initialize(200, 1)
 
 # ╔═╡ e0b0880c-0a47-11eb-0db2-f760bbbf9c11
 # Color based on infection status
@@ -337,10 +398,13 @@ else
 end
 
 # ╔═╡ b5a88504-0a47-11eb-0eda-f125d419e909
-# position(a::Agent) = a.position # uncomment this line
+position(a::Agent) = a.position # uncomment this line
 
 # ╔═╡ 87a4cdaa-0a5a-11eb-2a5e-cfaf30e942ca
-# color(a::Agent) = color(a.status) # uncomment this line
+color(a::Agent) = color(a.status) # uncomment this line
+
+# ╔═╡ fe11ebb8-9e90-4256-81b0-6dbe826a9ff4
+color.(zz)
 
 # ╔═╡ 49fa8092-0a43-11eb-0ba9-65785ac6a42f
 md"""
@@ -350,17 +414,39 @@ md"""
 You can use the keyword argument `c=color.(agents)` inside your call to the plotting function make the point colors correspond to the infection statuses. Don't forget to use `ratio=1`.
 """
 
+# ╔═╡ 2de18184-7de3-4d53-a0e4-b0cfcd7954d6
+
+
 # ╔═╡ 1ccc961e-0a69-11eb-392b-915be07ef38d
-# function visualize(agents::Vector, L)
-	
-# 	return missing
-# end
+function visualize(agents::Vector{Agent}, L::Number)
+	colors = color.(agents)
+	positions = make_tuple.(position.(agents))
+    x = Int[]
+    y = Int[]
+    for i in eachindex(positions)
+        xᵢ, yᵢ = positions[i]
+        push!(x, xᵢ)
+        push!(y, yᵢ)
+	end
+	p = scatter(
+        x,
+        y,
+        color = colors,
+		ratio = 1,
+		xlim = (-L*11/10, L*11/10),
+		ylim = (-L*11/10, L*11/10),
+		alpha = 0.5,
+        legend = false
+    )
+		
+	return p
+end
 
 # ╔═╡ 1f96c80a-0a46-11eb-0690-f51c60e57c3f
 let
-	N = 20
+	N = 200
 	L = 10
-#	visualize(initialize(N, L), L) # uncomment this line!
+	visualize(initialize(N, L), L) # uncomment this line!
 end
 
 # ╔═╡ f953e06e-099f-11eb-3549-73f59fed8132
@@ -1878,6 +1964,9 @@ version = "0.9.1+5"
 # ╠═0ebd35c8-0972-11eb-2e67-698fd2d311d2
 # ╟─027a5f48-0a44-11eb-1fbf-a94d02d0b8e3
 # ╠═b2f90634-0a68-11eb-1618-0b42f956b5a7
+# ╠═119535d9-2548-498b-b37b-e2341de0fcf2
+# ╠═bba4ff76-4a4f-4a76-b006-2e175ab70c56
+# ╠═4cfabb4f-cf5d-4784-8e65-d5021212a165
 # ╟─66663fcc-0a58-11eb-3568-c1f990c75bf2
 # ╟─3e858990-0954-11eb-3d10-d10175d8ca1c
 # ╠═189bafac-0972-11eb-1893-094691b2073c
@@ -1913,13 +2002,16 @@ version = "0.9.1+5"
 # ╠═35537320-0a47-11eb-12b3-931310f18dec
 # ╠═cf2f3b98-09a0-11eb-032a-49cc8c15e89c
 # ╟─814e888a-0954-11eb-02e5-0964c7410d30
+# ╠═55c9bb2f-49ad-4521-a0f0-63a2d1e0182d
 # ╠═0cfae7ba-0a69-11eb-3690-d973d70e47f4
-# ╠═1d0f8eb4-0a46-11eb-38e7-63ecbadbfa20
+# ╠═04b9cb92-5e4a-45c2-8b1b-980047265133
+# ╠═fe11ebb8-9e90-4256-81b0-6dbe826a9ff4
 # ╟─4fac0f36-0a59-11eb-03d0-632dc9db063a
 # ╠═e0b0880c-0a47-11eb-0db2-f760bbbf9c11
 # ╠═b5a88504-0a47-11eb-0eda-f125d419e909
 # ╠═87a4cdaa-0a5a-11eb-2a5e-cfaf30e942ca
 # ╟─49fa8092-0a43-11eb-0ba9-65785ac6a42f
+# ╠═2de18184-7de3-4d53-a0e4-b0cfcd7954d6
 # ╠═1ccc961e-0a69-11eb-392b-915be07ef38d
 # ╠═1f96c80a-0a46-11eb-0690-f51c60e57c3f
 # ╟─c2633a8b-374c-40a7-a827-b186d423fee5
