@@ -233,13 +233,14 @@ function k_sweeps!(agents::Vector{Agent}, L::Number, infection::AbstractInfectio
     end
 end
 
-function count_SIR(agents::Vector{Agent})
+function SIR_count(agents::Vector{Agent})
 	susceptible = 0
 	infected = 0
 	recovered = 0
 
 	for i in eachindex(agents)
 		agent_status = status(agents[i])
+		
 		if agent_status == S
 			susceptible += 1
 		elseif agent_status == I
@@ -249,6 +250,61 @@ function count_SIR(agents::Vector{Agent})
 		end
 	end
 
-	return (susceptible, infected, recovered)
-end	
+	return susceptible, infected, recovered
+end
 
+function simulation(N::Number, L::Number, infection::AbstractInfection, k::Number)
+	agents = initialize(N, L)
+
+	sᵢ, iᵢ, rᵢ = SIR_count(agents)
+	susceptible = [sᵢ]
+	infected = [iᵢ]
+	recovered = [rᵢ]
+	
+	simulations = [deepcopy(agents)]
+	
+	for i in 1:k
+		sweep!(agents, L, infection)
+		sᵢ, iᵢ, rᵢ = SIR_count(agents)
+		push!(susceptible, sᵢ)
+		push!(infected, iᵢ)
+		push!(recovered, rᵢ)
+
+		simulation_state = deepcopy(agents)
+		push!(simulations, simulation_state)
+	end
+	
+	return susceptible, infected, recovered, simulations
+end
+
+let
+	N = 100
+	L = 45
+	pandemic = CollisionInfectionRecovery(0.20, 0.05)
+	x = initialize(N, L)
+	
+	Ss, Is, Rs = Int[], Int[], Int[]
+	
+	Tmax = 200
+	
+	@gif for t in 1:Tmax
+		for i in 1:50N
+			step!(x, L, pandemic) 
+		end
+
+		S, I, R = SIR_count(x)
+
+		push!(Ss, S)
+		push!(Is, I)
+		push!(Rs, R)
+		
+		left = visualize(x, L)
+	
+		right = plot(xlim=(1,Tmax), ylim=(1,N), size=(600,300))
+		plot!(right, 1:t, Ss, color="blue", label="Susceptible")
+		plot!(right, 1:t, Is, color="red", label="Infected")
+		plot!(right, 1:t, Rs, color="green", label="Recovered")
+	
+		plot(left, right)
+	end
+end
