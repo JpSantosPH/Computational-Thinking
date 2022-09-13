@@ -636,57 +636,70 @@ k_sweep_max = 10000
 
 # ╔═╡ bda43ac3-e553-498b-a515-f52bee11ae1d
 function SIR_count(agents::Vector{Agent})
-	s = 0
-	i = 0
-	r = 0
+	susceptible = 0
+	infected = 0
+	recovered = 0
 
 	for i in eachindex(agents)
 		agent_status = status(agents[i])
 		
 		if agent_status == S
-			s += 1
+			susceptible += 1
 		elseif agent_status == I
-			i += 1
+			infected += 1
 		elseif agent_status == R
-			r += 1
+			recovered += 1
 		end
 	end
 
-	return s, i, r
-end	
+	return susceptible, infected, recovered
+end
 
 # ╔═╡ c6a78699-e31f-467a-8e1e-70c154988afe
 function simulation(N::Number, L::Number, infection::AbstractInfection, k::Number)
 	agents = initialize(N, L)
 
 	sᵢ, iᵢ, rᵢ = SIR_count(agents)
-	s = [sᵢ]
-	i = [iᵢ]
-	r = [rᵢ]
+	susceptible = [sᵢ]
+	infected = [iᵢ]
+	recovered = [rᵢ]
 	
-	simulations = [agents]
+	simulations = [deepcopy(agents)]
 	
 	for i in 1:k
 		sweep!(agents, L, infection)
 		sᵢ, iᵢ, rᵢ = SIR_count(agents)
-		push!(s, sᵢ)
-		push!(i, iᵢ)
-		push!(r, rᵢ)
-		
-		push!(simulations, agents)
+		push!(susceptible, sᵢ)
+		push!(infected, iᵢ)
+		push!(recovered, rᵢ)
+
+		simulation_state = deepcopy(agents)
+		push!(simulations, simulation_state)
 	end
 	
-	return s, i, r, simulations
+	return susceptible, infected, recovered, simulations
 end
 
 # ╔═╡ ef27de84-0a63-11eb-177f-2197439374c5
 let
 	N = 50
 	L = 30
-	infection = pandemic
+	infection = CollisionInfectionRecovery(0.20, 0.05)
 	k = k_sweep_max
 
 	s, i, r, simulations = simulation(N, L, infection, k)
+
+	p = plot()
+	plot!(p, s, label="susceptible")
+	plot!(p, i, label="infected")
+	plot!(p, r, label="recovered")
+end
+
+
+# ╔═╡ cff5fc38-a38b-4c53-adce-9e010bf5b0bd
+function hbox(x, y, gap=16; sy=size(y), sx=size(x))
+	w, h = (max(sx[1], sy[1]),
+		   gap + sx[2] + sy[2])
 end
 
 # ╔═╡ 201a3810-0a45-11eb-0ac9-a90419d0b723
@@ -701,13 +714,59 @@ Let's make our plot come alive! There are two options to make our visualization 
 This an optional exercise, and our solution to 2️⃣ is given below.
 """
 
+# ╔═╡ eadf49c5-92f0-4bce-8caf-ccf620ee8625
+@bind t Slider(1:50:10001, show_value=true)
+
 # ╔═╡ e5040c9e-0a65-11eb-0f45-270ab8161871
-# let
-# 	N = 50
-# 	L = 30
+sim_s, sim_i, sim_r, simulations = simulation(50, 40, CollisionInfectionRecovery(0.20, 0.05), 10000)
+
+# ╔═╡ 67b74e0a-c495-41bc-8c41-76eb81c3968e
+visualize(simulations[t], 30)
+
+# ╔═╡ 0d664536-1d9d-494e-afa7-6cf3cf561708
+let
+	plot_1 = visualize(simulations[t], 30)
 	
-# 	missing
-# end
+	plot_2 = plot(xlim=(0, 10000))
+	plot!(plot_2, sim_s[1:t], label="susceptible", alpha=1)
+	plot!(plot_2, sim_i[1:t], label="infected", alpha=1)
+	plot!(plot_2, sim_r[1:t], label="recovered", alpha=1)
+
+	plot(plot_1, plot_2)
+end
+
+# ╔═╡ 5a22d182-31c0-4945-8344-198d05ffa29b
+let
+	N = 100
+	L = 40
+	pandemic = CollisionInfectionRecovery(0.18, 0.035)
+	x = initialize(N, L)
+	
+	Ss, Is, Rs = Int[], Int[], Int[]
+	
+	Tmax = 200
+	
+	@gif for t in 1:Tmax
+		for i in 1:50N
+			step!(x, L, pandemic) 
+		end
+
+		S, I, R = SIR_count(x)
+
+		push!(Ss, S)
+		push!(Is, I)
+		push!(Rs, R)
+		
+		left = visualize(x, L)
+	
+		right = plot(xlim=(1,Tmax), ylim=(1,N), size=(600,300))
+		plot!(right, 1:t, Ss, color="blue", label="Susceptible")
+		plot!(right, 1:t, Is, color="red", label="Infected")
+		plot!(right, 1:t, Rs, color="green", label="Recovered")
+	
+		plot(left, right)
+	end
+end
 
 # ╔═╡ 2031246c-0a45-11eb-18d3-573f336044bf
 md"""
@@ -2171,8 +2230,13 @@ version = "0.9.1+5"
 # ╠═c6a78699-e31f-467a-8e1e-70c154988afe
 # ╠═ef27de84-0a63-11eb-177f-2197439374c5
 # ╟─8475baf0-0a63-11eb-1207-23f789d00802
+# ╠═cff5fc38-a38b-4c53-adce-9e010bf5b0bd
 # ╟─201a3810-0a45-11eb-0ac9-a90419d0b723
-# ╠═e5040c9e-0a65-11eb-0f45-270ab8161871
+# ╠═67b74e0a-c495-41bc-8c41-76eb81c3968e
+# ╠═eadf49c5-92f0-4bce-8caf-ccf620ee8625
+# ╠═0d664536-1d9d-494e-afa7-6cf3cf561708
+# ╟─e5040c9e-0a65-11eb-0f45-270ab8161871
+# ╠═5a22d182-31c0-4945-8344-198d05ffa29b
 # ╟─f9b9e242-0a53-11eb-0c6a-4d9985ef1687
 # ╟─2031246c-0a45-11eb-18d3-573f336044bf
 # ╠═63dd9478-0a45-11eb-2340-6d3d00f9bb5f
