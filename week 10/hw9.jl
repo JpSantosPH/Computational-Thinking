@@ -192,8 +192,8 @@ In our model, agents will be able to walk in 4 directions: up, down, left and ri
  	Coordinate( 1, 0), 
  	Coordinate( 0, 1), 
  	Coordinate(-1, 0), 
- 	Coordinate( 0,-1),
- ]
+	Coordinate( 0,-1),
+	 ]
 
 # ╔═╡ 71c9788c-0aeb-11eb-28d2-8dcc3f6abacd
 md"""
@@ -268,6 +268,174 @@ One relatively simple boundary condition is a **collision boundary**:
 👉 Write a function `collide_boundary` which takes a `Coordinate` `c` and a size $L$, and returns a new coordinate that lies inside the box (i.e. ``[-L,L]\times [-L,L]``), but is closest to `c`. This is similar to `extend_mat` from Homework 1.
 """
 
+# ╔═╡ b4ed2362-09a0-11eb-0be9-99c91623b28f
+md"""
+#### Exercise 1.6
+👉  Implement a 3-argument method  of `trajectory` where the third argument is a size. The trajectory returned should be within the boundary (use `collide_boundary` from above). You can still use `accumulate` with an anonymous function that makes a move and then reflects the resulting coordinate, or use a for loop.
+
+"""
+
+# ╔═╡ 3ed06c80-0954-11eb-3aee-69e4ccdc4f9d
+md"""
+## **Exercise 2:** _Wanderering Agents_
+
+In this exercise we will create Agents which have a location as well as some infection state information.
+
+Let's define a type `Agent`. `Agent` contains a `position` (of type `Coordinate`), as well as a `status` of type `InfectionStatus` (as in Homework 4).)
+
+(For simplicity we will not use a `num_infected` field, but feel free to do so!)
+"""
+
+# ╔═╡ 35537320-0a47-11eb-12b3-931310f18dec
+	@enum InfectionStatus S I R
+
+# ╔═╡ cf2f3b98-09a0-11eb-032a-49cc8c15e89c
+mutable struct Agent
+	position::Coordinate
+	status::InfectionStatus
+	num_infected::Integer
+end
+
+# ╔═╡ 814e888a-0954-11eb-02e5-0964c7410d30
+md"""
+#### Exercise 2.1
+👉 Write a function `initialize` that takes parameters $N$ and $L$, where $N$ is the number of agents and $2L$ is the side length of the square box where the agents live.
+
+It returns a `Vector` of `N` randomly generated `Agent`s. Their coordinates are randomly sampled in the ``[-L,L] \times [-L,L]`` box, and the agents are all susceptible, except one, chosen at random, which is infectious.
+"""
+
+# ╔═╡ 55c9bb2f-49ad-4521-a0f0-63a2d1e0182d
+function set_status!(agent::Agent, new_status::InfectionStatus)
+	agent.status = new_status
+end
+
+# ╔═╡ e0b0880c-0a47-11eb-0db2-f760bbbf9c11
+# Color based on infection status
+color(s::InfectionStatus) = if s == S
+	"blue"
+elseif s == I
+	"red"
+else
+	"green"
+end
+
+# ╔═╡ b5a88504-0a47-11eb-0eda-f125d419e909
+position(a::Agent) = a.position # uncomment this line
+
+# ╔═╡ 87a4cdaa-0a5a-11eb-2a5e-cfaf30e942ca
+color(a::Agent) = color(a.status) # uncomment this line
+
+# ╔═╡ 5d00af71-c8c0-4fed-928a-4ecfcf3592f4
+status(a::Agent) = a.status
+
+# ╔═╡ 49fa8092-0a43-11eb-0ba9-65785ac6a42f
+md"""
+#### Exercise 2.2
+👉 Write a function `visualize` that takes in a collection of agents as argument, and the box size `L`. It should plot a point for each agent at its location, coloured according to its status.
+
+You can use the keyword argument `c=color.(agents)` inside your call to the plotting function make the point colors correspond to the infection statuses. Don't forget to use `ratio=1`.
+"""
+
+# ╔═╡ f953e06e-099f-11eb-3549-73f59fed8132
+md"""
+
+### Exercise 3: Spatial epidemic model -- Dynamics
+
+Last week we wrote a function `interact!` that takes two agents, `agent` and `source`, and an infection of type `InfectionRecovery`, which models the interaction between two agent, and possibly modifies `agent` with a new status.
+
+This week, we define a new infection type, `CollisionInfectionRecovery`, and a new method that is the same as last week, except it **only infects `agent` if `agents.position==source.position`**.
+"""	
+
+# ╔═╡ e6dd8258-0a4b-11eb-24cb-fd5b3554381b
+abstract type AbstractInfection end
+
+# ╔═╡ de88b530-0a4b-11eb-05f7-85171594a8e8
+struct CollisionInfectionRecovery <: AbstractInfection
+	p_infection::Float64
+	p_recovery::Float64
+end
+
+# ╔═╡ 2c09aae4-eefd-4f07-b2b5-9778e5442c34
+function bernoulli(p::Number)
+	rand() < p
+end
+
+# ╔═╡ 0c2e5e94-2409-4159-9f98-706df1819f1b
+function in_contact(agent::Agent, source::Agent)
+	return agent.position == source.position
+end
+
+# ╔═╡ 23b37cfe-fe4c-4a00-ba7c-0cd3a4388c87
+function successfully_infects(infection::AbstractInfection)
+	return bernoulli(infection.p_infection)
+end
+
+# ╔═╡ 8d709e73-b3fa-4191-a0ac-6d723e8111fa
+function successfully_recovers(infection::AbstractInfection)
+	return bernoulli(infection.p_recovery)
+end
+
+# ╔═╡ a13e85d8-ebb0-4778-b120-3bf5e2a0d81a
+function update_num_infected!(source::Agent)
+	source.num_infected += 1
+end
+
+# ╔═╡ 80f39140-0aef-11eb-21f7-b788c5eab5c9
+md"""
+
+Write a function `interact!` that takes two `Agent`s and a `CollisionInfectionRecovery`, and:
+
+- If the agents are at the same spot, causes a susceptible agent to communicate the desease from an infectious one with the correct probability.
+- if the first agent is infectious, it recovers with some probability
+"""
+
+# ╔═╡ d1bcd5c4-0a4b-11eb-1218-7531e367a7ff
+function interact!(agent::Agent, source::Agent, infection::CollisionInfectionRecovery)
+	if in_contact(agent, source)
+		if status(agent) == S && status(source) == I && successfully_infects(infection)
+			set_status!(agent, I)
+			update_num_infected!(source)
+		elseif status(agent) == I && successfully_recovers(infection)
+			set_status!(agent, R)
+		end
+	end
+end
+
+# ╔═╡ 41865679-c09d-43d3-bbd6-1733f18fc4bd
+function interact!(agents::Vector{Agent}, source::Agent, infection::CollisionInfectionRecovery)
+
+	for i in eachindex(agents)
+		interact!(agents[i], source, infection)
+	end
+
+end
+
+# ╔═╡ 34778744-0a5f-11eb-22b6-abe8b8fc34fd
+md"""
+#### Exercise 3.1
+Your turn!
+
+👉 Write a function `step!` that takes a vector of `Agent`s, a box size `L` and an `infection`. This that does one step of the dynamics on a vector of agents. 
+
+- Choose an Agent `source` at random.
+
+- Move the `source` one step, and use `collide_boundary` to ensure that our agent stays within the box.
+
+- For all _other_ agents, call `interact!(other_agent, source, infection)`.
+
+- return the array `agents` again.
+"""
+
+# ╔═╡ 4a2b5dab-b6eb-4f27-9407-61e8cb4f9c12
+function update_position!(agent::Agent, new_position::Coordinate)
+	agent.position = new_position
+end
+
+# ╔═╡ 395ae885-ef5e-42cd-8c99-111ce1e5c7b8
+function Base.:-(agents::Vector{Agent}, source::Agent)
+	return setdiff(agents, [source])
+end
+
 # ╔═╡ 0237ebac-0a69-11eb-2272-35ea4e845d84
 function collide_boundary(c::Coordinate, L::Number)
 	x = c.x
@@ -289,13 +457,6 @@ end
 
 # ╔═╡ ad832360-0a40-11eb-2857-e7f0350f3b12
 collide_boundary(Coordinate(12,4), 10) # uncomment to test
-
-# ╔═╡ b4ed2362-09a0-11eb-0be9-99c91623b28f
-md"""
-#### Exercise 1.6
-👉  Implement a 3-argument method  of `trajectory` where the third argument is a size. The trajectory returned should be within the boundary (use `collide_boundary` from above). You can still use `accumulate` with an anonymous function that makes a move and then reflects the resulting coordinate, or use a for loop.
-
-"""
 
 # ╔═╡ 0665aa3e-0a69-11eb-2b5d-cd718e3c7432
 function trajectory(c::Coordinate, n::Int, L::Number)
@@ -342,40 +503,6 @@ let
 	p
 end
 
-# ╔═╡ 3ed06c80-0954-11eb-3aee-69e4ccdc4f9d
-md"""
-## **Exercise 2:** _Wanderering Agents_
-
-In this exercise we will create Agents which have a location as well as some infection state information.
-
-Let's define a type `Agent`. `Agent` contains a `position` (of type `Coordinate`), as well as a `status` of type `InfectionStatus` (as in Homework 4).)
-
-(For simplicity we will not use a `num_infected` field, but feel free to do so!)
-"""
-
-# ╔═╡ 35537320-0a47-11eb-12b3-931310f18dec
-	@enum InfectionStatus S I R
-
-# ╔═╡ cf2f3b98-09a0-11eb-032a-49cc8c15e89c
-mutable struct Agent
-	position::Coordinate
-	status::InfectionStatus
-	num_infected::Integer
-end
-
-# ╔═╡ 814e888a-0954-11eb-02e5-0964c7410d30
-md"""
-#### Exercise 2.1
-👉 Write a function `initialize` that takes parameters $N$ and $L$, where $N$ is the number of agents and $2L$ is the side length of the square box where the agents live.
-
-It returns a `Vector` of `N` randomly generated `Agent`s. Their coordinates are randomly sampled in the ``[-L,L] \times [-L,L]`` box, and the agents are all susceptible, except one, chosen at random, which is infectious.
-"""
-
-# ╔═╡ 55c9bb2f-49ad-4521-a0f0-63a2d1e0182d
-function set_status!(agent::Agent, new_status::InfectionStatus)
-	agent.status = new_status
-end
-
 # ╔═╡ 0cfae7ba-0a69-11eb-3690-d973d70e47f4
 function initialize(N::Number, L::Number)
 	coordinates = rand(Coordinate, -L:L, N)
@@ -383,39 +510,6 @@ function initialize(N::Number, L::Number)
 	set_status!(rand(agents), I)
 	return agents
 end
-
-# ╔═╡ 04b9cb92-5e4a-45c2-8b1b-980047265133
-zz = initialize(200, 1)
-
-# ╔═╡ e0b0880c-0a47-11eb-0db2-f760bbbf9c11
-# Color based on infection status
-color(s::InfectionStatus) = if s == S
-	"blue"
-elseif s == I
-	"red"
-else
-	"green"
-end
-
-# ╔═╡ b5a88504-0a47-11eb-0eda-f125d419e909
-position(a::Agent) = a.position # uncomment this line
-
-# ╔═╡ 87a4cdaa-0a5a-11eb-2a5e-cfaf30e942ca
-color(a::Agent) = color(a.status) # uncomment this line
-
-# ╔═╡ fe11ebb8-9e90-4256-81b0-6dbe826a9ff4
-color.(zz)
-
-# ╔═╡ 49fa8092-0a43-11eb-0ba9-65785ac6a42f
-md"""
-#### Exercise 2.2
-👉 Write a function `visualize` that takes in a collection of agents as argument, and the box size `L`. It should plot a point for each agent at its location, coloured according to its status.
-
-You can use the keyword argument `c=color.(agents)` inside your call to the plotting function make the point colors correspond to the infection statuses. Don't forget to use `ratio=1`.
-"""
-
-# ╔═╡ 2de18184-7de3-4d53-a0e4-b0cfcd7954d6
-
 
 # ╔═╡ 1ccc961e-0a69-11eb-392b-915be07ef38d
 function visualize(agents::Vector{Agent}, L::Number)
@@ -449,60 +543,29 @@ let
 	visualize(initialize(N, L), L) # uncomment this line!
 end
 
-# ╔═╡ f953e06e-099f-11eb-3549-73f59fed8132
-md"""
+# ╔═╡ 2877c317-2785-42b4-b26d-975bff3ef5ff
+function random_walk!(agent::Agent; L=Inf, n=1)
+	
+	position_agent = position(agent)
+	
+	for i in 1:n
+	position_agent = collide_boundary(position_agent + rand(possible_moves), L)
+	end
 
-### Exercise 3: Spatial epidemic model -- Dynamics
-
-Last week we wrote a function `interact!` that takes two agents, `agent` and `source`, and an infection of type `InfectionRecovery`, which models the interaction between two agent, and possibly modifies `agent` with a new status.
-
-This week, we define a new infection type, `CollisionInfectionRecovery`, and a new method that is the same as last week, except it **only infects `agent` if `agents.position==source.position`**.
-"""	
-
-# ╔═╡ e6dd8258-0a4b-11eb-24cb-fd5b3554381b
-abstract type AbstractInfection end
-
-# ╔═╡ de88b530-0a4b-11eb-05f7-85171594a8e8
-struct CollisionInfectionRecovery <: AbstractInfection
-	p_infection::Float64
-	p_recovery::Float64
+	update_position!(agent, position_agent)
+	return agent
 end
 
-# ╔═╡ 80f39140-0aef-11eb-21f7-b788c5eab5c9
-md"""
-
-Write a function `interact!` that takes two `Agent`s and a `CollisionInfectionRecovery`, and:
-
-- If the agents are at the same spot, causes a susceptible agent to communicate the desease from an infectious one with the correct probability.
-- if the first agent is infectious, it recovers with some probability
-"""
-
-# ╔═╡ d1bcd5c4-0a4b-11eb-1218-7531e367a7ff
-# function interact!(agent::Agent, source::Agent, infection::CollisionInfectionRecovery)
-	# missing
-# end
-
-# ╔═╡ 34778744-0a5f-11eb-22b6-abe8b8fc34fd
-md"""
-#### Exercise 3.1
-Your turn!
-
-👉 Write a function `step!` that takes a vector of `Agent`s, a box size `L` and an `infection`. This that does one step of the dynamics on a vector of agents. 
-
-- Choose an Agent `source` at random.
-
-- Move the `source` one step, and use `collide_boundary` to ensure that our agent stays within the box.
-
-- For all _other_ agents, call `interact!(other_agent, source, infection)`.
-
-- return the array `agents` again.
-"""
-
 # ╔═╡ 24fe0f1a-0a69-11eb-29fe-5fb6cbf281b8
-# function step!(agents::Vector, L::Number, infection::AbstractInfection)
+function step!(agents::Vector{Agent}, L::Number, infection::AbstractInfection)
+	source = rand(agents)
+	random_walk!(source, L=L)
 	
-# 	return missing
-# end
+	other_agents = agents - source
+	interact!(other_agents, source, infection)
+	
+return agents
+end
 
 # ╔═╡ 1fc3271e-0a45-11eb-0e8d-0fd355f5846b
 md"""
@@ -521,22 +584,43 @@ plot(plot_before, plot_after)
 ```
 """
 
+# ╔═╡ 96a10fba-51ad-4c09-b4ab-0fb18d24b03b
+	function sweep!(agents::Vector{Agent}, L::Number, infection::AbstractInfection)
+	
+		for i in eachindex(agents)
+			step!(agents, L, infection)
+		end
+	end
+
+# ╔═╡ 7b31f72c-9721-4993-8237-9ff7a7966a53
+function k_sweeps!(agents::Vector{Agent}, L::Number, infection::AbstractInfection, k::Number)
+
+		for i in 1:k
+			sweep!(agents, L, infection)
+		end
+end
+
 # ╔═╡ 18552c36-0a4d-11eb-19a0-d7d26897af36
-pandemic = CollisionInfectionRecovery(0.5, 0.00001)
+pandemic = CollisionInfectionRecovery(0.5, 0.002)
 
 # ╔═╡ 4e7fd58a-0a62-11eb-1596-c717e0845bd5
-@bind k_sweeps Slider(1:10000, default=1000)
+@bind k_sweeps Slider(1:10000, default=1000, show_value=true)
 
 # ╔═╡ 778c2490-0a62-11eb-2a6c-e7fab01c6822
-# let
-# 	N = 50
-# 	L = 40
+let
+	N = 50
+	L = 40
+	k = 1000
+	agents = initialize(N, L)
 	
-# 	plot_before = plot(1:3) # replace with your code
-# 	plot_after = plot(1:3)
+	plot_before = visualize(agents, L)
 	
-# 	plot(plot_before, plot_after)
-# end
+	k_sweeps!(agents, L, pandemic, k_sweeps)
+	
+	plot_after = visualize(agents, L)
+	
+	plot(plot_before, plot_after)
+end
 
 # ╔═╡ e964c7f0-0a61-11eb-1782-0b728fab1db0
 md"""
@@ -550,13 +634,59 @@ Every time that you move the slider, a completely new simulation is created an r
 # ╔═╡ 4d83dbd0-0a63-11eb-0bdc-757f0e721221
 k_sweep_max = 10000
 
+# ╔═╡ bda43ac3-e553-498b-a515-f52bee11ae1d
+function SIR_count(agents::Vector{Agent})
+	s = 0
+	i = 0
+	r = 0
+
+	for i in eachindex(agents)
+		agent_status = status(agents[i])
+		
+		if agent_status == S
+			s += 1
+		elseif agent_status == I
+			i += 1
+		elseif agent_status == R
+			r += 1
+		end
+	end
+
+	return s, i, r
+end	
+
+# ╔═╡ c6a78699-e31f-467a-8e1e-70c154988afe
+function simulation(N::Number, L::Number, infection::AbstractInfection, k::Number)
+	agents = initialize(N, L)
+
+	sᵢ, iᵢ, rᵢ = SIR_count(agents)
+	s = [sᵢ]
+	i = [iᵢ]
+	r = [rᵢ]
+	
+	simulations = [agents]
+	
+	for i in 1:k
+		sweep!(agents, L, infection)
+		sᵢ, iᵢ, rᵢ = SIR_count(agents)
+		push!(s, sᵢ)
+		push!(i, iᵢ)
+		push!(r, rᵢ)
+		
+		push!(simulations, agents)
+	end
+	
+	return s, i, r, simulations
+end
+
 # ╔═╡ ef27de84-0a63-11eb-177f-2197439374c5
 let
 	N = 50
 	L = 30
-	
-	# agents = initialize(N, L)
-	# compute k_sweep_max number of sweeps and plot the SIR
+	infection = pandemic
+	k = k_sweep_max
+
+	s, i, r, simulations = simulation(N, L, infection, k)
 end
 
 # ╔═╡ 201a3810-0a45-11eb-0ac9-a90419d0b723
@@ -2004,30 +2134,41 @@ version = "0.9.1+5"
 # ╟─814e888a-0954-11eb-02e5-0964c7410d30
 # ╠═55c9bb2f-49ad-4521-a0f0-63a2d1e0182d
 # ╠═0cfae7ba-0a69-11eb-3690-d973d70e47f4
-# ╠═04b9cb92-5e4a-45c2-8b1b-980047265133
-# ╠═fe11ebb8-9e90-4256-81b0-6dbe826a9ff4
 # ╟─4fac0f36-0a59-11eb-03d0-632dc9db063a
 # ╠═e0b0880c-0a47-11eb-0db2-f760bbbf9c11
 # ╠═b5a88504-0a47-11eb-0eda-f125d419e909
 # ╠═87a4cdaa-0a5a-11eb-2a5e-cfaf30e942ca
+# ╠═5d00af71-c8c0-4fed-928a-4ecfcf3592f4
 # ╟─49fa8092-0a43-11eb-0ba9-65785ac6a42f
-# ╠═2de18184-7de3-4d53-a0e4-b0cfcd7954d6
 # ╠═1ccc961e-0a69-11eb-392b-915be07ef38d
 # ╠═1f96c80a-0a46-11eb-0690-f51c60e57c3f
 # ╟─c2633a8b-374c-40a7-a827-b186d423fee5
 # ╟─f953e06e-099f-11eb-3549-73f59fed8132
 # ╠═e6dd8258-0a4b-11eb-24cb-fd5b3554381b
 # ╠═de88b530-0a4b-11eb-05f7-85171594a8e8
+# ╠═2c09aae4-eefd-4f07-b2b5-9778e5442c34
+# ╠═0c2e5e94-2409-4159-9f98-706df1819f1b
+# ╠═23b37cfe-fe4c-4a00-ba7c-0cd3a4388c87
+# ╠═8d709e73-b3fa-4191-a0ac-6d723e8111fa
+# ╠═a13e85d8-ebb0-4778-b120-3bf5e2a0d81a
 # ╟─80f39140-0aef-11eb-21f7-b788c5eab5c9
 # ╠═d1bcd5c4-0a4b-11eb-1218-7531e367a7ff
+# ╠═41865679-c09d-43d3-bbd6-1733f18fc4bd
 # ╟─34778744-0a5f-11eb-22b6-abe8b8fc34fd
+# ╠═4a2b5dab-b6eb-4f27-9407-61e8cb4f9c12
+# ╠═395ae885-ef5e-42cd-8c99-111ce1e5c7b8
+# ╠═2877c317-2785-42b4-b26d-975bff3ef5ff
 # ╠═24fe0f1a-0a69-11eb-29fe-5fb6cbf281b8
 # ╟─1fc3271e-0a45-11eb-0e8d-0fd355f5846b
-# ╟─18552c36-0a4d-11eb-19a0-d7d26897af36
+# ╠═96a10fba-51ad-4c09-b4ab-0fb18d24b03b
+# ╠═7b31f72c-9721-4993-8237-9ff7a7966a53
+# ╠═18552c36-0a4d-11eb-19a0-d7d26897af36
 # ╠═4e7fd58a-0a62-11eb-1596-c717e0845bd5
 # ╠═778c2490-0a62-11eb-2a6c-e7fab01c6822
 # ╟─e964c7f0-0a61-11eb-1782-0b728fab1db0
 # ╠═4d83dbd0-0a63-11eb-0bdc-757f0e721221
+# ╠═bda43ac3-e553-498b-a515-f52bee11ae1d
+# ╠═c6a78699-e31f-467a-8e1e-70c154988afe
 # ╠═ef27de84-0a63-11eb-177f-2197439374c5
 # ╟─8475baf0-0a63-11eb-1207-23f789d00802
 # ╟─201a3810-0a45-11eb-0ac9-a90419d0b723
