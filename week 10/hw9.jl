@@ -630,6 +630,39 @@ This an optional exercise, and our solution to 2️⃣ is given below.
 # ╔═╡ eadf49c5-92f0-4bce-8caf-ccf620ee8625
 @bind t Slider(1:50:k_sweep_max, show_value=true)
 
+# ╔═╡ 5a22d182-31c0-4945-8344-198d05ffa29b
+let
+	N = 50
+	L = 40
+	pandemic = CollisionInfectionRecovery(0.18, 0.035)
+	x = initialize(N, L)
+	
+	Ss, Is, Rs = Int[], Int[], Int[]
+	
+	Tmax = 200
+	
+	@gif for t in 1:Tmax
+		for i in 1:50N
+			step!(x, L, pandemic) 
+		end
+
+		S, I, R = SIR_count(x)
+
+		push!(Ss, S)
+		push!(Is, I)
+		push!(Rs, R)
+		
+		left = visualize(x, L)
+	
+		right = plot(xlim=(1,Tmax), ylim=(1,N))
+		plot!(right, 1:t, Ss, color="blue", label="Susceptible")
+		plot!(right, 1:t, Is, color="red", label="Infected")
+		plot!(right, 1:t, Rs, color="green", label="Recovered")
+	
+		plot(left, right, size=(600,300))
+	end
+end
+
 # ╔═╡ 2031246c-0a45-11eb-18d3-573f336044bf
 md"""
 #### Exercise 3.5
@@ -855,39 +888,6 @@ let
 	plot!(plot₂, r₂, color="green", label="recovered")
 
 	plot(plot₁, plot₂, layout=grid(2,1), size=(600,600))
-end
-
-# ╔═╡ 5a22d182-31c0-4945-8344-198d05ffa29b
-let
-	N = 50
-	L = 40
-	pandemic = CollisionInfectionRecovery(0.18, 0.035)
-	x = initialize(N, L)
-	
-	Ss, Is, Rs = Int[], Int[], Int[]
-	
-	Tmax = 200
-	
-	@gif for t in 1:Tmax
-		for i in 1:50N
-			step!(x, L, pandemic) 
-		end
-
-		S, I, R = SIR_count(x)
-
-		push!(Ss, S)
-		push!(Is, I)
-		push!(Rs, R)
-		
-		left = visualize(x, L)
-	
-		right = plot(xlim=(1,Tmax), ylim=(1,N))
-		plot!(right, 1:t, Ss, color="blue", label="Susceptible")
-		plot!(right, 1:t, Is, color="red", label="Infected")
-		plot!(right, 1:t, Rs, color="green", label="Recovered")
-	
-		plot(left, right, size=(600,300))
-	end
 end
 
 # ╔═╡ a885bf78-0a5c-11eb-2383-9d74c8765847
