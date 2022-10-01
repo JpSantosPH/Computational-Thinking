@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.11
+# v0.19.12
 
 using Markdown
 using InteractiveUtils
@@ -14,746 +14,725 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ 1e06178a-1fbf-11eb-32b3-61769a79b7c0
+# ╔═╡ 9c8a7e5a-12dd-11eb-1b99-cd1d52aefa1d
 begin
-	using LaTeXStrings
+	using Statistics
 	using Plots
 	using PlutoUI
-	using Random, Distributions
+	using OffsetArrays
 end
 
-# ╔═╡ 169727be-2433-11eb-07ae-ab7976b5be90
-md"_Homework 10 Spring 2021, version 3_"
-
-# ╔═╡ 21524c08-2433-11eb-0c55-47b1bdc9e459
-md"""
-
-# **Homework 10**: _Climate modeling I_
-`18.S191`, spring 2021
-"""
-
-# ╔═╡ 23335418-2433-11eb-05e4-2b35dc6cca0e
-# edit the code below to set your name and kerberos ID (i.e. email without @mit.edu)
-
-student = (name = "John Paul", kerberos_id = "idk")
-
-# you might need to wait until all other cells in this notebook have completed running. 
-# scroll around the page to see what's up
-
-# ╔═╡ 18be4f7c-2433-11eb-33cb-8d90ca6f124c
-md"""
-
-Submission by: **_$(student.name)_** ($(student.kerberos_id)@mit.edu)
-"""
-
-# ╔═╡ 253f4da0-2433-11eb-1e48-4906059607d3
-md"_Let's create a package environment:_"
-
-# ╔═╡ 87e68a4a-2433-11eb-3e9d-21675850ed71
+# ╔═╡ 2cad38c2-b71d-11eb-24fd-3b460ca71531
 html"""
-<iframe width="100%" height="300" src="https://www.youtube.com/embed/Gi4ZZVS2GLA" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-"""
+<div style="
+position: absolute;
+width: calc(100% - 30px);
+border: 50vw solid #282936;
+border-top: 500px solid #282936;
+border-bottom: none;
+box-sizing: content-box;
+left: calc(-50vw + 15px);
+top: -500px;
+height: 500px;
+pointer-events: none;
+"></div>
+
+<div style="
+height: 500px;
+width: 100%;
+background: #282936;
+color: #fff;
+padding-top: 68px;
+">
+<span style="
+font-family: Vollkorn, serif;
+font-weight: 700;
+font-feature-settings: 'lnum', 'pnum';
+"> <p style="
+font-size: 1.5rem;
+opacity: .8;
+"><em>Section 3.9</em></p>
+<p style="text-align: center; font-size: 2rem;">
+<em> Advection and diffusion in 2D </em>
+</p>
+
+<p style="
+font-size: 1.5rem;
+text-align: center;
+opacity: .8;
+"><em>Lecture Video</em></p>
+<div style="display: flex; justify-content: center;">
+<div  notthestyle="position: relative; right: 0; top: 0; z-index: 300;">
+<iframe src="https://www.youtube.com/embed/DdTWgBlDgr0" width=400 height=250  frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+</div>
+</div>
 
-# ╔═╡ fe3304f8-2668-11eb-066d-fdacadce5a19
-md"""
-_Before working on the homework, make sure that you have watched the first lecture on climate modeling 👆. We have included the important functions from this lecture notebook in the next cell. Feel free to have a look!_
-"""
-
-# ╔═╡ 930d7154-1fbf-11eb-1c3a-b1970d291811
-module Model
-
-const S = 1368; # solar insolation [W/m^2]  (energy per unit time per unit area)
-const α = 0.3; # albedo, or planetary reflectivity [unitless]
-const B = -1.3; # climate feedback parameter [W/m^2/°C],
-const T0 = 14.; # preindustrial temperature [°C]
-
-absorbed_solar_radiation(; α=α, S=S) = S*(1 - α)/4; # [W/m^2]
-outgoing_thermal_radiation(T; A=A, B=B) = A - B*T;
-
-const A = S*(1. - α)/4 + B*T0; # [W/m^2].
-
-greenhouse_effect(CO2; a=a, CO2_PI=CO2_PI) = a*log(CO2/CO2_PI);
-
-const a = 5.0; # CO2 forcing coefficient [W/m^2]
-const CO2_PI = 280.; # preindustrial CO2 concentration [parts per million; ppm];
-CO2_const(t) = CO2_PI; # constant CO2 concentrations
-
-const C = 51.; # atmosphere and upper-ocean heat capacity [J/m^2/°C]
-
-function timestep!(ebm)
-	append!(ebm.T, ebm.T[end] + ebm.Δt*tendency(ebm));
-	append!(ebm.t, ebm.t[end] + ebm.Δt);
-end;
-
-tendency(ebm) = (1. /ebm.C) * (
-	+ absorbed_solar_radiation(α=ebm.α, S=ebm.S)
-	- outgoing_thermal_radiation(ebm.T[end], A=ebm.A, B=ebm.B)
-	+ greenhouse_effect(ebm.CO2(ebm.t[end]), a=ebm.a, CO2_PI=ebm.CO2_PI)
-);
-
-begin
-	mutable struct EBM
-		T::Array{Float64,1}
-	
-		t::Array{Float64,1}
-		Δt::Float64
-	
-		CO2::Function
-	
-		C::Float64
-		a::Float64
-		A::Float64
-		B::Float64
-		CO2_PI::Float64
-	
-		α::Float64
-		S::Float64
-	end;
-	
-	# Make constant parameters optional kwargs
-	EBM(T::Array{Float64,1}, t::Array{Float64,1}, Δt::Real, CO2::Function;
-		C=C, a=a, A=A, B=B, CO2_PI=CO2_PI, α=α, S=S) = (
-		EBM(T, t, Δt, CO2, C, a, A, B, CO2_PI, α, S)
-	);
-	
-	# Construct from float inputs for convenience
-	EBM(T0::Real, t0::Real, Δt::Real, CO2::Function;
-		C=C, a=a, A=A, B=B, CO2_PI=CO2_PI, α=α, S=S) = (
-		EBM(Float64[T0], Float64[t0], Δt, CO2;
-			C=C, a=a, A=A, B=B, CO2_PI=CO2_PI, α=α, S=S);
-	);
-end;
-
-begin
-	function run!(ebm::EBM, end_year::Real)
-		while ebm.t[end] < end_year
-			timestep!(ebm)
-		end
-	end;
-	
-	run!(ebm) = run!(ebm, 200.) # run for 200 years by default
-end
-
-
-
-
-CO2_hist(t) = CO2_PI * (1 .+ fractional_increase(t));
-fractional_increase(t) = ((t .- 1850.)/220).^3;
-
-begin
-	CO2_RCP26(t) = CO2_PI * (1 .+ fractional_increase(t) .* min.(1., exp.(-((t .-1850.).-170)/100))) ;
-	RCP26 = EBM(T0, 1850., 1., CO2_RCP26)
-	run!(RCP26, 2100.)
-	
-	CO2_RCP85(t) = CO2_PI * (1 .+ fractional_increase(t) .* max.(1., exp.(((t .-1850.).-170)/100)));
-	RCP85 = EBM(T0, 1850., 1., CO2_RCP85)
-	run!(RCP85, 2100.)
-end
-
-end
-
-# ╔═╡ 1312525c-1fc0-11eb-2756-5bc3101d2260
-md"""## **Exercise 1** - _policy goals under uncertainty_
-A recent ground-breaking [review paper](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2019RG000678) produced the most comprehensive and up-to-date estimate of the *climate feedback parameter*, which they find to be
-
-$B \approx \mathcal{N}(-1.3, 0.4),$
-
-i.e. our knowledge of the real value is normally distributed with a mean value $\overline{B} = -1.3$ W/m²/K and a standard deviation $\sigma = 0.4$ W/m²/K. These values are not very intuitive, so let us convert them into more policy-relevant numbers.
-
-**Definition:** *Equilibrium climate sensitivity (ECS)* is defined as the amount of warming $\Delta T$ caused by a doubling of CO₂ (e.g. from the pre-industrial value 280 ppm to 560 ppm), at equilibrium.
-
-At equilibrium, the energy balance model equation is:
-
-$0 = \frac{S(1 - α)}{4} - (A - BT_{eq}) + a \ln\left( \frac{2\;\text{CO}₂_{\text{PI}}}{\text{CO}₂_{\text{PI}}} \right)$
-
-From this, we subtract the preindustrial energy balance, which is given by:
-
-$0 = \frac{S(1-α)}{4} - (A - BT_{0}),$
-
-The result of this subtraction, after rearranging, is our definition of $\text{ECS}$:
-
-$\text{ECS} \equiv T_{eq} - T_{0} = -\frac{a\ln(2)}{B}$
-"""
-
-# ╔═╡ 0cf80347-439f-4c4c-83a5-cb11e1fab440
-ECS(B, a) = -a*log(2.)./B
-
-# ╔═╡ 7f961bc0-1fc5-11eb-1f18-612aeff0d8df
-md"""The plot below provides an example of an "abrupt 2 × CO₂" experiment, a classic experimental treatment method in climate modelling which is used in practice to estimate ECS for a particular model. (Note: in complicated climate models the values of the parameters $a$ and $B$ are not specified *a priori*, but *emerge* as outputs of the simulation.)
-
-The simulation begins at the preindustrial equilibrium, i.e. a temperature $T_{0} = 14$°C is in balance with the pre-industrial CO₂ concentration of 280 ppm until CO₂ is abruptly doubled from 280 ppm to 560 ppm. The climate responds by warming rapidly, and after a few hundred years approaches the equilibrium climate sensitivity value, by definition.
-"""
-
-# ╔═╡ fa7e6f7e-2434-11eb-1e61-1b1858bb0988
-md"""
-``B = `` $(@bind B_slider Slider(-2.5:.001:0; show_value=true, default=-1.3))
-"""
-
-# ╔═╡ 16348b6a-1fc2-11eb-0b9c-65df528db2a1
-md"""
-##### Exercise 1.1 - _Develop understanding for feedbacks and climate sensitivity_
-"""
-
-# ╔═╡ e296c6e8-259c-11eb-1385-53f757f4d585
-md"""
-👉 Change the value of $B$ using the slider above. What does it mean for a climate system to have a more negative value of $B$? Explain why we call $B$ the _climate feedback parameter_.
-"""
-
-# ╔═╡ a86f13de-259d-11eb-3f46-1f6fb40020ce
-observations_from_changing_B = md"""
-A more negative value of B means reducing the equilibrium climate sensitivity or temperature change. It's called climate feedback parameter because it encompasses all the reaction of the climate and how it changes in response to the doubling of the CO2.
-"""
-
-# ╔═╡ 3d66bd30-259d-11eb-2694-471fb3a4a7be
-md"""
-👉 What happens when $B$ is greater than or equal to zero?
-"""
-
-# ╔═╡ 5f82dec8-259e-11eb-2f4f-4d661f44ef41
-observations_from_nonnegative_B = md"""
-Hello world!
-"""
-
-# ╔═╡ 56b68356-2601-11eb-39a9-5f4b8e580b87
-md"Reveal answer: $(@bind reveal_nonnegative_B_answer CheckBox())"
-
-# ╔═╡ 7d815988-1fc7-11eb-322a-4509e7128ce3
-if reveal_nonnegative_B_answer
-	md"""
-This is known as the "runaway greenhouse effect", where warming self-amplifies so strongly through *positive feedbacks* that the warming continues forever (or until the oceans boil away and there is no longer a reservoir or water to support a *water vapor feedback*. This is thought to explain Venus' extremely hot and hostile climate, but as you can see is extremely unlikely to occur on present-day Earth.
-"""
-end
-
-# ╔═╡ aed8f00e-266b-11eb-156d-8bb09de0dc2b
-md"""
-👉 Create a graph to visualize ECS as a function of B. 
-"""
-
-# ╔═╡ 269200ec-259f-11eb-353b-0b73523ef71a
-md"""
-#### Exercise 1.2 - _Doubling CO₂_
-
-To compute ECS, we doubled the CO₂ in our atmosphere. This factor 2 is not entirely arbitrary: without substantial effort to reduce CO₂ emissions, we are expected to **at least** double the CO₂ in our atmosphere by 2100. 
-
-Right now, our CO₂ concentration is 415 ppm -- $(round(415 / 280, digits=3)) times the pre-industrial value of 280 ppm from 1850. 
-
-The CO₂ concentrations in the _future_ depend on human action. There are several models for future concentrations, which are formed by assuming different _policy scenarios_. A baseline model is RCP8.5 - a "worst-case" high-emissions scenario. In our notebook, this model is given as a function of ``t``.
-"""
-
-# ╔═╡ 2dfab366-25a1-11eb-15c9-b3dd9cd6b96c
-md"""
-👉 In what year are we expected to have doubled the CO₂ concentration, under policy scenario RCP8.5?
-"""
-
-# ╔═╡ bade1372-25a1-11eb-35f4-4b43d4e8d156
-md"""
-#### Exercise 1.3 - _Uncertainty in B_
-
-The climate feedback parameter ``B`` is not something that we can control– it is an emergent property of the global climate system. Unfortunately, ``B`` is also difficult to quantify empirically (the relevant processes are difficult or impossible to observe directly), so there remains uncertainty as to its exact value.
-
-A value of ``B`` close to zero means that an increase in CO₂ concentrations will have a larger impact on global warming, and that more action is needed to stay below a maximum temperature. In answering such policy-related question, we need to take the uncertainty in ``B`` into account. In this exercise, we will do so using a Monte Carlo simulation: we generate a sample of values for ``B``, and use these values in our analysis.
-"""
-
-# ╔═╡ 02232964-2603-11eb-2c4c-c7b7e5fed7d1
-B̅ = -1.3; σ = 0.4
-
-# ╔═╡ c4398f9c-1fc4-11eb-0bbb-37f066c6027d
-ECS(; B=B̅, a=Model.a) = -a*log(2.)./B;
-
-# ╔═╡ 25f92dec-1fc4-11eb-055d-f34deea81d0e
-let
-	double_CO2(t) = if t >= 0
-		2*Model.CO2_PI
-	else
-		Model.CO2_PI
-	end
-	
-	# the definition of A depends on B, so we recalculate:
-	A = Model.S*(1. - Model.α)/4 + B_slider*Model.T0
-	# create the model
-	ebm_ECS = Model.EBM(14., -100., 1., double_CO2, A=A, B=B_slider);
-	Model.run!(ebm_ECS, 300)
-	
-	ecs = ECS(B=B_slider)
-	
-	p = plot(
-		size=(500, 250), legend=:bottomright, 
-		title="Transient response to instant doubling of CO₂", 
-		ylabel="temperature change [°C]", xlabel="years after doubling",
-		ylim=(-.5, (isfinite(ecs) && ecs < 4) ? 4 : 10),
-	)
-	
-	plot!(p, [ebm_ECS.t[1], ebm_ECS.t[end]], ecs .* [1,1], 
-		ls=:dash, color=:darkred, label="ECS")
-	
-	plot!(p, ebm_ECS.t, ebm_ECS.T .- ebm_ECS.T[1], 
-		label="ΔT(t) = T(t) - T₀")
-end |> as_svg
-
-# ╔═╡ 736ed1b6-1fc2-11eb-359e-a1be0a188670
-B_samples = let
-	B_distribution = Normal(B̅, σ)
-	Nsamples = 5000
-	
-	samples = rand(B_distribution, Nsamples)
-	# we only sample negative values of B
-	filter(x -> x < 0, samples)
-end
-
-# ╔═╡ 49cb5174-1fc3-11eb-3670-c3868c9b0255
-histogram(B_samples, size=(600, 250), label=nothing, xlabel="B [W/m²/K]", ylabel="samples")
-
-# ╔═╡ f3abc83c-1fc7-11eb-1aa8-01ce67c8bdde
-md"""
-👉 Generate a probability distribution for the ECS based on the probability distribution function for $B$ above. Plot a histogram.
-"""
-
-# ╔═╡ 3d72ab3a-2689-11eb-360d-9b3d829b78a9
-ECS_samples =  ECS.(B_samples, σ)
-
-# ╔═╡ b6d7a362-1fc8-11eb-03bc-89464b55c6fc
-md"**Answer:**"
-
-# ╔═╡ 1f148d9a-1fc8-11eb-158e-9d784e390b24
-histogram(ECS_samples, size=(600, 250), label=nothing, xlabel="ECS", ylabel="samples")
-
-# ╔═╡ cf8dca6c-1fc8-11eb-1f89-099e6ba53c22
-md"It looks like the ECS distribution is **not normally distributed**, even though $B$ is. 
-
-👉 How does $\overline{\text{ECS}(B)}$ compare to $\text{ECS}(\overline{B})$? What is the probability that $\text{ECS}(B)$ lies above $\text{ECS}(\overline{B})$?
-"
-
-# ╔═╡ 02173c7a-2695-11eb-251c-65efb5b4a45f
-
-
-# ╔═╡ 440271b6-25e8-11eb-26ce-1b80aa176aca
-md"👉 Does accounting for uncertainty in feedbacks make our expectation of global warming better (less implied warming) or worse (more implied warming)?"
-
-# ╔═╡ cf276892-25e7-11eb-38f0-03f75c90dd9e
-observations_from_the_order_of_averaging = md"""
-Hello world!
-"""
-
-# ╔═╡ 5b5f25f0-266c-11eb-25d4-17e411c850c9
-md"""
-#### Exercise 1.5 - _Running the model_
-
-In the lecture notebook we introduced a _mutable struct_ `EBM` (_energy balance model_), which contains:
-- the parameters of our climate simulation (`C`, `a`, `A`, `B`, `CO2_PI`, `α`, `S`, see details below)
-- a function `CO2`, which maps a time `t` to the concentrations at that year. For example, we use the function `t -> 280` to simulate a model with concentrations fixed at 280 ppm.
-
-`EBM` also contains the simulation results, in two arrays:
-- `T` is the array of tempartures (°C, `Float64`).
-- `t` is the array of timestamps (years, `Float64`), of the same size as `T`.
-"""
-
-# ╔═╡ 3f823490-266d-11eb-1ba4-d5a23975c335
-html"""
 <style>
-.hello td {
-	font-family: sans-serif; font-size: .8em;
-	max-width: 300px
+body {
+overflow-x: hidden;
 }
+</style>"""
 
-soft {
-	opacity: .5;
-}
-</style>
+# ╔═╡ 3b3ffbaf-0fa3-4dec-afb9-5274116bc3d3
+TableOfContents()
 
-
-<p>Properties of an <code>EBM</code> obect:</p>
-<table class="hello">
-<thead>
-
-<tr><th>Name</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><th><code>A</code></th><td>Linearized outgoing thermal radiation: offset <soft>[W/m²]</soft></td></tr>
-<tr><th><code>B</code></th><td>Linearized outgoing thermal radiation: slope. <em>or: </em><b>climate feedback parameter</b> <soft>[W/m²/°C]</soft></td></tr>
-<tr><th><code>α</code></th><td>Planet albedo, 0.0-1.0 <soft>[unitless]</soft></td></tr>
-<tr><th><code>S</code></th><td>Solar insulation <soft>[W/m²]</soft></td></tr>
-<tr><th><code>C</code></th><td>Atmosphere and upper-ocean heat capacity <soft>[J/m²/°C]</soft></td></tr>
-<tr><th><code>a</code></th><td>CO₂ forcing effect <soft>[W/m²]</soft></td></tr>
-<tr><th><code>CO2_PI</code></th><td>Pre-industrial CO₂ concentration <soft>[ppm]</soft></td></tr>
-</tbody>
-</table>
-
-"""
-
-# ╔═╡ 971f401e-266c-11eb-3104-171ae299ef70
+# ╔═╡ 0f8db6f4-2113-11eb-18b4-21a469c67f3a
 md"""
-
-You can set up an instance of `EBM` like so:
+# PDEs in 2D: Heat transport by ocean currents
 """
 
-# ╔═╡ 746aa5bc-266c-11eb-14c9-63ccc313f5de
-empty_ebm = Model.EBM(
-	14.0, # initial temperature
-	1850, # initial year
-	1, # Δt
-	t -> 280.0, # CO2 function
-)
-
-# ╔═╡ a919d584-2670-11eb-1cf9-2327c8135d6d
-md"""
-Have a look inside this object. We see that `T` and `t` are initialized to a 1-element array.
-
-Let's run our model:
-"""
-
-# ╔═╡ bfb07a0a-2670-11eb-3938-772499c637b1
-simulated_model = let
-	ebm = Model.EBM(14.0, 1850, 1, t -> 280.0)
-	Model.run!(ebm, 2020)
-	ebm
-end
-
-# ╔═╡ 12cbbab0-2671-11eb-2b1f-038c206e84ce
-md"""
-Again, look inside `simulated_model` and notice that `T` and `t` have accumulated the simulation results.
-
-In this simulation, we used `T0 = 14` and `CO2 = t -> 280`, which is why `T` is constant during our simulation. These parameters are the default, pre-industrial values, and our model is based on this equilibrium.
-
-👉 Run a simulation with policy scenario RCP8.5, and plot the computed temperature graph. What is the global temperature in the year 2100?
-"""
-
-# ╔═╡ 9596c2dc-2671-11eb-36b9-c1af7e5f1089
-simulated_rcp85_model = let
-	
-	missing
-end
-
-# ╔═╡ f94a1d56-2671-11eb-2cdc-810a9c7a8a5f
-
-
-# ╔═╡ 4b091fac-2672-11eb-0db8-75457788d85e
-md"""
-Additional parameters can be set using keyword arguments. For example:
-
-```julia
-Model.EBM(14, 1850, 1, t -> 280.0; B=-2.0)
-```
-Creates the same model as before, but with `B = -2.0`.
-"""
-
-# ╔═╡ 9cdc5f84-2671-11eb-3c78-e3495bc64d33
-md"""
-👉 Write a function `temperature_response` that takes a function `CO2` and an optional value `B` as parameters, and returns the temperature at 2100 according to our model.
-"""
-
-# ╔═╡ f688f9f2-2671-11eb-1d71-a57c9817433f
-function temperature_response(CO2::Function, B::Float64=-1.3)
-	
-	return missing
-end
-
-# ╔═╡ 049a866e-2672-11eb-29f7-bfea7ad8f572
-temperature_response(t -> 280)
-
-# ╔═╡ 09901de6-2672-11eb-3d50-05b176b729e7
-temperature_response(Model.CO2_RCP85)
-
-# ╔═╡ aea0d0b4-2672-11eb-231e-395c863827d3
-temperature_response(Model.CO2_RCP85, -1.0)
-
-# ╔═╡ 9c32db5c-1fc9-11eb-029a-d5d554de1067
-md"""#### Exercise 1.6 - _Application to policy relevant questions_
-
-We talked about two _emissions scenarios_: RCP2.6 (strong mitigation - controlled CO2 concentrations) and RCP8.5 (no mitigation - high CO2 concentrations). These are given by the following functions:
-"""
-
-# ╔═╡ ee1be5dc-252b-11eb-0865-291aa823b9e9
-t = 1850:2100
-
-# ╔═╡ e10a9b70-25a0-11eb-2aed-17ed8221c208
-plot(t, Model.CO2_RCP85.(t), 
-	ylim=(0, 1200), ylabel="CO2 concentration [ppm]")
-
-# ╔═╡ 25dba096-7104-411b-921d-f0265e239626
-Model.CO2_RCP85.(t)
-
-# ╔═╡ 50ea30ba-25a1-11eb-05d8-b3d579f85652
-expected_double_CO2_year = let
-	a = findfirst(x -> x ≥ 560, Model.CO2_RCP85.(t))
-	
-	t[1] + a
-end
-
-# ╔═╡ 40f1e7d8-252d-11eb-0549-49ca4e806e16
-@bind t_scenario_test Slider(t; show_value=true, default=1850)
-
-# ╔═╡ 19957754-252d-11eb-1e0a-930b5208f5ac
-Model.CO2_RCP26(t_scenario_test), Model.CO2_RCP85(t_scenario_test)
-
-# ╔═╡ 06c5139e-252d-11eb-2645-8b324b24c405
-md"""
-We are interested in how the **uncertainty in our input** $B$ (the climate feedback paramter) *propagates* through our model to determine the **uncertainty in our output** $T(t)$, for a given emissions scenario. The goal of this exercise is to answer the following by using *Monte Carlo Simulation* for *uncertainty propagation*:
-
-> 👉 What is the probability that we see more than 2°C of warming by 2100 under the low-emissions scenario RCP2.6? What about under the high-emissions scenario RCP8.5?
-
-"""
-
-# ╔═╡ f2e55166-25ff-11eb-0297-796e97c62b07
-
-
-# ╔═╡ 1ea81214-1fca-11eb-2442-7b0b448b49d6
-md"""
-## **Exercise 2** - _How did Snowball Earth melt?_
-
-In lecture 21 (see below), we discovered that increases in the brightness of the Sun are not sufficient to explain how Snowball Earth eventually melted.
-"""
-
-# ╔═╡ a0ef04b0-25e9-11eb-1110-cde93601f712
+# ╔═╡ ed741ec6-1f75-11eb-03be-ad6284abaab8
 html"""
-<iframe width="100%" height="300" src="https://www.youtube-nocookie.com/embed/Y68tnH0FIzc" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe width="700" height="394" src="https://www.youtube-nocookie.com/embed/6_GQuVopmUM?start=15" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 """
 
-# ╔═╡ 3e310cf8-25ec-11eb-07da-cb4a2c71ae34
+# ╔═╡ ac759b96-2114-11eb-24cb-d50b556f4142
 md"""
-We talked about a second theory -- a large increase in CO₂ (by volcanoes) could have caused a strong enough greenhouse effect to melt the Snowball. If we imagine that the CO₂ then decreased (e.g. by getting sequestered by the now liquid ocean), we might be able to explain how we transitioned from a hostile Snowball Earth to today's habitable "Waterball" Earth.
+## One-dimensional advection--diffusion
 
-In this exercise, you will estimate how much CO₂ would be needed to melt the Snowball and visualize a possible trajectory for Earth's climate over the past 700 million years by making an interactive *bifurcation diagram*.
+Let's recall from the previous lecture that we derived the **advection--diffusion** equation with one spatial dimension:
 
-#### Exercise 2.1
+$\frac{\partial T(x,t)}{\partial t} = -U \frac{\partial T}{\partial x} + \kappa \frac{\partial^{2} T}{\partial x^{2}},$
 
-In the [lecture notebook](https://github.com/hdrake/simplEarth/blob/master/2_ebm_multiple_equilibria.jl) (video above), we had a bifurcation diagram of $S$ (solar insolation) vs $T$ (temperature). We increased $S$, watched our point move right in the diagram until we found the tipping point. This time we will do the same, but we vary the CO₂ concentration, and keep $S$ fixed at its default (present day) value.
+where $T(x, t)$ is the temperature, $U$ is a constant *advective velocity* and $\kappa$ is the *heat diffusivity*.
+
+
+## Two-dimensional advection--diffusion
+
+The two-dimensional advection diffusion equation adds advection and diffusion operators acting in a *second spatial dimension* $y$ that is perpendicular to $x$. 
+The temperature field $T$ is then a function $T = T(x, y, t)$, and the PDE becomes
+
+$\frac{\partial T(x,y,t)}{\partial t} = u(x,y) \frac{\partial T}{\partial x} + v(x,y) \frac{\partial T}{\partial y} + \kappa \left( \frac{\partial^{2} T}{\partial x^{2}} + \frac{\partial^{2} T}{\partial y^{2}} \right),$
+
+where $\vec{u}(x,y) = (u, v) = u\,\mathbf{\hat{x}} + v\,\mathbf{\hat{y}}$ is a velocity vector field, and each partial derivative is also a function of $x$, $y$ and $t$.
+
+We will think of $x$ as being the *longitudinal* direction (positive from west to east) and $y$ as the *latitudinal* direction (positive from south to north).
 """
 
-# ╔═╡ d6d1b312-2543-11eb-1cb2-e5b801686ffb
-md"""
-Below we have an empty diagram, which is already set up with a CO₂ vs $T$ diagram, with a logarthmic horizontal axis. Now it's your turn! We have written some pointers below to help you, but feel free to do it your own way.
-"""
-
-# ╔═╡ 3cbc95ba-2685-11eb-3810-3bf38aa33231
-md"""
-We used two helper functions:
-"""
-
-# ╔═╡ 68b2a560-2536-11eb-0cc4-27793b4d6a70
-function add_cold_hot_areas!(p)
-	
-	left, right = xlims(p)
-	
-	plot!(p, 
-		[left, right], [-60, -60], 
-		fillrange=[-10., -10.], fillalpha=0.3, c=:lightblue, label=nothing
-	)
-	annotate!(p, 
-		left+12, -19, 
-		text("completely\nfrozen", 10, :darkblue, :left)
-	)
-	
-	plot!(p, 
-		[left, right], [10, 10], 
-		fillrange=[80., 80.], fillalpha=0.09, c=:red, lw=0., label=nothing
-	)
-	annotate!(p,
-		left+12, 15, 
-		text("no ice", 10, :darkred, :left)
-	)
-end
-
-# ╔═╡ 0e19f82e-2685-11eb-2e99-0d094c1aa520
-function add_reference_points!(p)
-	plot!(p, 
-		[Model.CO2_PI, Model.CO2_PI], [-55, 75], 
-		color=:grey, alpha=0.3, lw=8, 
-		label="Pre-industrial CO2"
-	)
-	plot!(p, 
-		[Model.CO2_PI], [Model.T0], 
-		shape=:circle, color=:orange, markersize=8,
-		label="Our preindustrial climate"
-	)
-	plot!(p,
-		[Model.CO2_PI], [-38.3], 
-		shape=:circle, color=:aqua, markersize=8,
-		label="Alternate preindustrial climate"
-	)
-end
-
-# ╔═╡ 1eabe908-268b-11eb-329b-b35160ec951e
-md"""
-👉 Create a slider for `CO2` between `CO2min` and `CO2max`. Just like the horizontal axis of our plot, we want the slider to be _logarithmic_. 
-"""
-
-# ╔═╡ 1d388372-2695-11eb-3068-7b28a2ccb9ac
-
-
-# ╔═╡ 4c9173ac-2685-11eb-2129-99071821ebeb
-md"""
-👉 Write a function `step_model!` that takes an existing `ebm` and `new_CO2`, which performs a step of our interactive process:
-- Reset the model by setting the `ebm.t` and `ebm.T` arrays to a single element. _Which value?_
-- Assign a new function to `ebm.CO2`. _What function?_
-- Run the model.
-"""
-
-# ╔═╡ 736515ba-2685-11eb-38cb-65bfcf8d1b8d
-function step_model!(ebm::Model.EBM, CO2::Real)
-	
-	# your code here
-	
-	return ebm
-end
-
-# ╔═╡ 8b06b944-268c-11eb-0bfc-8d4dd21e1f02
-md"""
-👉 Inside the plot cell, call the function `step_model!`.
-"""
-
-# ╔═╡ 09ce27ca-268c-11eb-0cdd-c9801db876f8
-md"""
-##### Parameters
-"""
-
-# ╔═╡ 298deff4-2676-11eb-2595-e7e22f613ea1
-CO2min = 10
-
-# ╔═╡ 2bbf5a70-2676-11eb-1085-7130d4a30443
-CO2max = 1_000_000
-
-# ╔═╡ de95efae-2675-11eb-0909-73afcd68fd42
-Tneo = -48
-
-# ╔═╡ 06d28052-2531-11eb-39e2-e9613ab0401c
-ebm = Model.EBM(Tneo, 0., 5., Model.CO2_const)
-
-# ╔═╡ 378aed18-252b-11eb-0b37-a3b511af2cb5
-let
-	p = plot(
-		xlims=(CO2min, CO2max), ylims=(-55, 75), 
-		xaxis=:log,
-		xlabel="CO2 concentration [ppm]", 
-		ylabel="Global temperature T [°C]",
-		title="Earth's CO2 concentration bifurcation diagram",
-		legend=:topleft
-	)
-	
-	add_cold_hot_areas!(p)
-	add_reference_points!(p)
-	
-	# your code here 
-	
-	plot!(p, 
-		[ebm.CO2(ebm.t[end])], [ebm.T[end]],
-		label=nothing,
-		color=:black,
-		shape=:circle,
-	)
-	
-end |> as_svg
-
-# ╔═╡ c78e02b4-268a-11eb-0af7-f7c7620fcc34
-md"""
-The albedo feedback is implemented by the methods below:
-"""
-
-# ╔═╡ d7801e88-2530-11eb-0b93-6f1c78d00eea
-function α(T; α0=Model.α, αi=0.5, ΔT=10.)
-	if T < -ΔT
-		return αi
-	elseif -ΔT <= T < ΔT
-		return αi + (α0-αi)*(T+ΔT)/(2ΔT)
-	elseif T >= ΔT
-		return α0
-	end
-end
-
-# ╔═╡ 607058ec-253c-11eb-0fb6-add8cfb73a4f
-function Model.timestep!(ebm)
-	ebm.α = α(ebm.T[end]) # Added this line
-	append!(ebm.T, ebm.T[end] + ebm.Δt*Model.tendency(ebm));
-	append!(ebm.t, ebm.t[end] + ebm.Δt);
-end
-
-# ╔═╡ 9c1f73e0-268a-11eb-2bf1-216a5d869568
-md"""
-If you like, make the visualization more informative! Like in the lecture notebook, you could add a trail behind the black dot, or you could plot the stable and unstable branches. It's up to you! 
-"""
-
-# ╔═╡ 11096250-2544-11eb-057b-d7112f20b05c
-md"""
-#### Exercise 2.2
-
-👉 Find the **lowest CO₂ concentration** necessary to melt the Snowball, programatically (i.e., using code).
-"""
-
-# ╔═╡ 9eb07a6e-2687-11eb-0de3-7bc6aa0eefb0
-co2_to_melt_snowball = let
-	
-	missing
-end
-
-# ╔═╡ 36e2dfea-2433-11eb-1c90-bb93ab25b33c
-if student.name == "Jazzy Doe" || student.kerberos_id == "jazz"
+# ╔═╡ 3a4a1aea-2118-11eb-30a9-57b87f2ddfae
+begin
+	reviewBox = @bind show_review CheckBox(default=false)
 	md"""
-	!!! danger "Before you submit"
-	    Remember to fill in your **name** and **Kerberos ID** at the top of this notebook.
+	##### Review of multivariable calculus identities and notation
+
+	*Check the box for a review* $(reviewBox)
+	
+
 	"""
 end
 
-# ╔═╡ 36ea4410-2433-11eb-1d98-ab4016245d95
-md"## Function library
+# ╔═╡ 023779a0-2a95-11eb-35b5-7be93c43afaf
+if show_review
+	md"""
+	The two-dimensional advection-diffusion equation is often written more succinctly as
 
-Just some helper functions used in the notebook."
+	$\frac{\partial T(x,y,t)}{\partial t} = - \vec{u} \cdot \nabla T + \kappa \nabla^{2} T,$
 
-# ╔═╡ 36f8c1e8-2433-11eb-1f6e-69dc552a4a07
-hint(text) = Markdown.MD(Markdown.Admonition("hint", "Hint", [text]))
+	using the following shorthand notation.
 
-# ╔═╡ 51e2e742-25a1-11eb-2511-ab3434eacc3e
-hint(md"The function `findfirst` might be helpful.")
+	The **gradient** operator is defined as 
 
-# ╔═╡ 53c2eaf6-268b-11eb-0899-b91c03713da4
-hint(md"
-```julia
-@bind log_CO2 Slider(❓)
-```
+	$\nabla \equiv \left( \frac{\partial}{\partial x}, \frac{\partial }{\partial y} \right)$
 
-```julia
-CO2 = 10^log_CO2
-```
+	such that
 
-")
+	$\nabla T = \left( \frac{\partial T}{\partial x}, \frac{\partial T}{\partial y} \right)$ and 
 
-# ╔═╡ cb15cd88-25ed-11eb-2be4-f31500a726c8
-hint(md"Use a condition on the albedo or temperature to check whether the Snowball has melted.")
+	$\vec{u} \cdot \nabla T = (u, v) \cdot \left( \frac{\partial T}{\partial x}, \frac{\partial T}{\partial y} \right) = u \frac{\partial T}{\partial x} + v\frac{\partial T}{\partial y}.$
 
-# ╔═╡ 232b9bec-2544-11eb-0401-97a60bb172fc
-hint(md"Start by writing a function `equilibrium_temperature(CO2)` which creates a new `EBM` at the Snowball Earth temperature T = $(Tneo) and returns the final temperature for a given CO2 level.")
+	The **Laplacian** operator $\nabla^{2}$, sometimes denoted $\Delta$, is defined as 
 
-# ╔═╡ 37061f1e-2433-11eb-3879-2d31dc70a771
-almost(text) = Markdown.MD(Markdown.Admonition("warning", "Almost there!", [text]))
+	$\nabla^{2} = \frac{\partial^{2}}{\partial x^{2}} + \frac{\partial^{2}}{\partial y^{2}}$
 
-# ╔═╡ 371352ec-2433-11eb-153d-379afa8ed15e
-still_missing(text=md"Replace `missing` with your answer.") = Markdown.MD(Markdown.Admonition("warning", "Here we go!", [text]))
+	such that
 
-# ╔═╡ 372002e4-2433-11eb-0b25-39ce1b1dd3d1
-keep_working(text=md"The answer is not quite right.") = Markdown.MD(Markdown.Admonition("danger", "Keep working on it!", [text]))
+	$\nabla^{2} T = \frac{\partial^{2} T}{\partial x^{2}} + \frac{\partial^{2} T}{\partial y^{2}}.$
 
-# ╔═╡ 372c1480-2433-11eb-3c4e-95a37d51835f
-yays = [md"Fantastic!", md"Splendid!", md"Great!", md"Yay ❤", md"Great! 🎉", md"Well done!", md"Keep it up!", md"Good job!", md"Awesome!", md"You got the right answer!", md"Let's move on to the next section."]
+	The **divergence** operator is defined as $\nabla \cdot [\quad]$, such that
 
-# ╔═╡ 3737be8e-2433-11eb-2049-2d6d8a5e4753
-correct(text=rand(yays)) = Markdown.MD(Markdown.Admonition("correct", "Got it!", [text]))
+	$\nabla \cdot \vec{u} = \left(\frac{\partial}{\partial x}, \frac{\partial}{\partial x} \right) \cdot (u,v) = \frac{\partial u}{\partial x} + \frac{\partial v}{\partial y}.$
 
-# ╔═╡ 374522c4-2433-11eb-3da3-17419949defc
-not_defined(variable_name) = Markdown.MD(Markdown.Admonition("danger", "Oopsie!", [md"Make sure that you define a variable called **$(Markdown.Code(string(variable_name)))**"]))
+	**Note:** Since seawater is largely **incompressible**, we have $\nabla \cdot \vec{u} = \frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} = 0$, i.e.  ocean currents are approximately a *non-divergent flow*. Among other implications, this allows us to write:
 
-# ╔═╡ 37552044-2433-11eb-1984-d16e355a7c10
-TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-weight: 900;'>TODO</span>"
+	\begin{align}
+	\vec{u} \cdot \nabla T&=
+	u\frac{\partial T(x,y,t)}{\partial x} + v\frac{\partial T(x,y,t)}{\partial y}\newline &=
+	u\frac{\partial T}{\partial x} + v\frac{\partial T}{\partial y} + T\left(\frac{\partial u}{\partial x} + \frac{\partial v}{\partial y}\right)\newline &=
+	\left( u\frac{\partial T}{\partial x} + T\frac{\partial u}{\partial x} \right) +
+	\left( v\frac{\partial T}{\partial y} + \frac{\partial v}{\partial y} \right)
+	\newline &=
+	\frac{\partial (uT)}{\partial x} + \frac{\partial (vT)}{\partial x}\newline &=
+	\nabla \cdot (\vec{u}T)
+	\end{align}
+
+	using the product rule (separately in both $x$ and $y$).
+	
+	#####  The flux-form two-dimensional advection-diffusion equation
+
+	This lets us finally re-write the two-dimensional advection-diffusion equation as:
+
+	$\frac{\partial T}{\partial t} = - \nabla \cdot (\vec{u}T) + \kappa \nabla^{2} T,$
+
+	which is the form we will use in our numerical algorithm below.
+	"""
+end
+
+# ╔═╡ b1b5625e-211a-11eb-3ee1-3ba9c9cc375a
+md"""
+## Numerical solution of the 2D equation
+
+##### Discretizing advection in two dimensions
+
+In Lecture XX we saw that in one dimension we can discretize a first-partial derivative in space using the *centered finite difference*
+
+$\frac{\partial T(x_{i}, t_{n})}{\partial x} \approx \frac{T_{i+1}^{n} - T_{i-1}^{n}}{2 \Delta x}.$
+
+In two dimensions, we discretize the partial derivative the exact same way, except that we also need to keep track of the cell index $j$ in the $y$ dimension:
+
+$\frac{\partial T(x_{i}, y_{j}, t_{n})}{\partial x} \approx \frac{T_{i+1,\, j}^{n} - T_{i-1,\,j}^{n}}{2 \Delta x}.$
+
+The *x-gradient kernel* below, implemented using the `OffsetArray` type, is shown below, and is reminiscent of the *edge-detection* or *sharpening* kernels used in image processing and machine learning:
+"""
+
+# ╔═╡ 3578b158-2a97-11eb-0771-bf6d82d3b6d1
+md"""
+The first-order partial derivative in $y$ is similarly discretized as:
+
+$\frac{\partial T(x_{i}, y_{j}, t_{n})}{\partial y} \approx \frac{T_{i,\, j+1}^{n} - T_{i,\,j-1}^{n}}{2 \Delta y}.$
+
+Its kernel is shown below.
+"""
+
+# ╔═╡ 7f3c9550-2a97-11eb-1549-455009025872
+md"""
+Now that we have discretized the two derivate terms, we can write out the *advective tendency* for computing $T_{i, j, n+1}$ as
+
+$u\frac{\partial T}{\partial x} + v\frac{\partial T}{\partial y} \approx u_{i,\, j}^{n} \frac{T_{i,\, j+1}^{n} - T_{i,\,j-1}^{n}}{2 \Delta y} + v_{i,\, j}^{n} \frac{T_{i,\, j+1}^{n} - T_{i,\,j-1}^{n}}{2 \Delta y}.$
+
+We implement this in julia as a series of methods for the `advect` function. The first method computes the advective tendency (as a single `Float64` type) for the $(i,j)$ grid cell while the second method returns an array of the tendencies for each grid cell using two nested for loops.
+"""
+
+# ╔═╡ 0127bca6-2a99-11eb-16a0-8d7af66694f8
+md"""
+#####  Discretizing diffusion in two dimensions
+
+Just as with advection, the process for discretizing the diffusion operators effectively consists of repeating the one-dimensional process for $x$ in a second dimension $y$, separately:
+
+$\kappa \left( \frac{\partial^{2} T}{\partial x^{2}} + \frac{\partial^{2} T}{\partial y^{2}} \right) = \kappa \left(
+\frac{T_{i+1,\;j}^{n} - 2T_{i,\;j}^{n} + T_{i-1,\;j}^{n}}{\left( \Delta x \right)^{2}} +
+\frac{T_{i,\;j+1}^{n} - 2T_{i,\;j}^{n} + T_{i,\;j-1}^{n}}{\left( \Delta y \right)^{2}}
+\right)$
+
+The corresponding $x$ and $y$ second-derivative kernels are shown below:
+"""
+
+# ╔═╡ eac507ce-2a99-11eb-3eba-0780a4a7e078
+md"""
+Just as we did with advection, we implement a `diffuse` function using multiple dispatch:
+"""
+
+# ╔═╡ 09f179c0-2a9a-11eb-1d0f-e59012f9e77b
+md"""##### No-flux boundary conditions
+
+We want to impose the no-flux boundary conditions, which states that
+
+$u\frac{\partial T}{\partial x} = \kappa \frac{\partial T}{\partial x} = 0$ at $x$ boundaries and 
+
+$v\frac{\partial T}{\partial y} = \kappa \frac{\partial T}{\partial y} = 0$ at the $y$ boundaries.
+
+To impose this, we treat $i=1$ and $i=N_{x}$ as *ghost cells*, which do not do anything expect help us impose these boundaries conditions. Discretely, the boundary fluxes between $i=1$ and $i=2$ vanish if
+
+$\dfrac{T_{2,\,j}^{n} -T_{1,\,j}^{n}}{\Delta x} = 0$ or 
+
+$T_{1,\,j}^{n} = T_{2,\,j}^{n}.$
+
+Thus, we can implement the boundary conditions by updating the temperature of the ghost cells to match their interior-point neighbors:
+"""
+
+# ╔═╡ 7caca2fa-2a9a-11eb-373f-156a459a1637
+function update_ghostcells!(A::Array{Float64,2}; option="no-flux")
+	Atmp = @view A[:,:]
+	if option=="no-flux"
+		A[1, :] = Atmp[2, :]; Atmp[end, :] = Atmp[end-1, :]
+		A[:, 1] = Atmp[:, 2]; Atmp[:, end] = Atmp[:, end-1]
+	end
+end
+
+# ╔═╡ 1f06bc34-2a9b-11eb-1030-ff12d103176c
+md"Let's get a feel for what this is actually doing"
+
+# ╔═╡ 2ef2f0cc-2a9b-11eb-03c6-5d8b4c6ae822
+begin
+	A = rand(Float64, 6,6);
+	heatmap(A, size=(200, 200))
+end |> as_svg
+
+# ╔═╡ 4558d4f8-2a9b-11eb-1f56-416975bcd180
+begin
+	Acopy = copy(A);
+	update_ghostcells!(Acopy)
+	heatmap(Acopy, size=(200, 200))
+end |> as_svg
+
+# ╔═╡ 74aa7512-2a9c-11eb-118c-c7a5b60eac1b
+md"""
+#####  Timestepping
+"""
+
+# ╔═╡ 13eb3966-2a9a-11eb-086c-05510a3f5b80
+md"""
+##### Data structures
+"""
+
+# ╔═╡ cd2ee4ca-2a06-11eb-0e61-e9a2ecf72bd6
+begin
+	struct Grid
+		N::Int64
+		L::Float64
+
+		Δx::Float64
+		Δy::Float64
+
+		x::Array{Float64,2}
+		y::Array{Float64,2}
+
+		Nx::Int64
+		Ny::Int64
+
+		function Grid(N, L)
+			Δx = L/N # [m]
+			Δy = L/N # [m]
+
+			x = 0. -Δx/2.:Δx:L +Δx/2.
+			x = reshape(x, (1, size(x,1)))
+			y = -L -Δy/2.:Δy:L +Δy/2.
+			y = reshape(y, (size(y,1), 1))
+
+			Nx, Ny = size(x, 2), size(y, 1)
+
+			return new(N, L, Δx, Δy, x, y, Nx, Ny)
+		end
+	end
+	
+	Base.zeros(G::Grid) = zeros(G.Ny, G.Nx)
+end
+
+# ╔═╡ 2a93145e-2a09-11eb-323b-01817062aa89
+struct Parameters
+	κ::Float64
+end
+
+# ╔═╡ 32663184-2a81-11eb-0dd1-dd1e10ed9ec6
+abstract type ClimateModel end
+
+# ╔═╡ d3796644-2a05-11eb-11b8-87b6e8c311f9
+begin
+	struct OceanModel <: ClimateModel
+		G::Grid
+		P::Parameters
+
+		u::Array{Float64,2}
+		v::Array{Float64,2}
+	end
+
+	OceanModel(G, P) = OceanModel(G, P, zeros(G), zeros(G))
+	OceanModel(G) = OceanModel(G, Parameters(1.e4), zeros(G), zeros(G))
+end;
+
+# ╔═╡ f92086c4-2a74-11eb-3c72-a1096667183b
+begin
+	mutable struct ClimateModelSimulation{ModelType<:ClimateModel}
+		model::ModelType
+		
+		T::Array{Float64,2}
+		Δt::Float64
+		
+		iteration::Int64
+	end
+	
+	ClimateModelSimulation(C::ModelType, T, Δt) where ModelType = 
+		ClimateModelSimulation{ModelType}(C, T, Δt, 0)
+end
+
+# ╔═╡ 31cb0c2c-2a9a-11eb-10ba-d90a00d8e03a
+md"""
+## Simulating heat transport by advective & diffusive ocean currents
+"""
+
+# ╔═╡ 981ef38a-2a8b-11eb-08be-b94be2924366
+md"**Simulation controls**"
+
+# ╔═╡ d042d25a-2a62-11eb-33fe-65494bb2fad5
+begin
+	quiverBox = @bind show_quiver CheckBox(default=false)
+	anomalyBox = @bind show_anomaly CheckBox(default=false)
+	md"""
+	*Click to show the velocity field* $(quiverBox) *or to show temperature **anomalies** instead of absolute values* $(anomalyBox)
+	"""
+end
+
+# ╔═╡ c20b0e00-2a8a-11eb-045d-9db88411746f
+begin
+	U_ex_Slider = @bind U_ex Slider(-4:1:8, default=0, show_value=false);
+	md"""
+	$(U_ex_Slider)
+	"""
+end
+
+# ╔═╡ 6dbc3d34-2a89-11eb-2c80-75459a8e237a
+begin
+	md"*Vary the current speed U:*  $(2. ^U_ex) [× reference]"
+end
+
+# ╔═╡ 933d42fa-2a67-11eb-07de-61cab7567d7d
+begin
+	κ_ex_Slider = @bind κ_ex Slider(0.:1.e3:1.e5, default=1.e4, show_value=true)
+	md"""
+	*Vary the diffusivity κ:* $(κ_ex_Slider) [m²/s]
+	"""
+end
+
+# ╔═╡ c9ea0f72-2a67-11eb-20ba-376ca9c8014f
+@bind go_ex Clock(0.1)
+
+# ╔═╡ c3f086f4-2a9a-11eb-0978-27532cbecebf
+md"""
+**Some unit tests for verification**
+"""
+
+# ╔═╡ ad7b7ed6-2a9c-11eb-06b7-0f5595167575
+function CFL_adv(sim::ClimateModelSimulation)
+	maximum(sqrt.(sim.model.u.^2 + sim.model.v.^2)) * sim.Δt / sim.model.G.Δx
+end
+
+# ╔═╡ a04d3dee-2a9c-11eb-040e-7bd2facb2eaa
+md"""
+# Appendix
+"""
+
+# ╔═╡ 16905a6a-2a78-11eb-19ea-81adddc21088
+Nvec = 1:25
+
+# ╔═╡ c0e46442-27fb-11eb-2c94-15edbda3f84d
+function plot_state(sim::ClimateModelSimulation; clims=(-1.1, 1.1), 
+		show_quiver=true, show_anomaly=false, IC=nothing)
+	
+	model = sim.model
+	grid = sim.model.G
+	
+	
+	p = plot(;
+		xlabel="longitudinal distance [km]", ylabel="latitudinal distance [km]",
+		clabel="Temperature",
+		yticks=((-grid.L:1000e3:grid.L), Int64.(1e-3*(-grid.L:1000e3:grid.L))),
+		xticks=((0:1000e3:grid.L), Int64.(1e-3*(0:1000e3:grid.L))),
+		xlims=(0., grid.L), ylims=(-grid.L, grid.L),
+		)
+	
+	X = repeat(grid.x, grid.Ny, 1)
+	Y = repeat(grid.y, 1, grid.Nx)
+	if show_anomaly
+		arrow_col = :black
+		maxdiff = maximum(abs.(sim.T .- IC))
+		heatmap!(p, grid.x[:], grid.y[:], sim.T .- IC, clims=(-1.1, 1.1),
+			color=:balance, colorbar_title="Temperature anomaly [°C]", linewidth=0.,
+			size=(400, 530)
+		)
+	else
+		arrow_col = :white
+		heatmap!(p, grid.x[:], grid.y[:], sim.T,
+			color=:thermal, levels=clims[1]:(clims[2]-clims[1])/21.:clims[2],
+			colorbar_title="Temperature [°C]", clims=clims,
+			linewidth=0., size=(400, 520)
+		)
+	end
+	
+	annotate!(p,
+		50e3, 6170e3,
+		text(
+			string("t = ", Int64(round(sim.iteration*sim.Δt/(60*60*24))), " days"),
+			color=:black, :left, 9
+		)
+	)
+	
+	if show_quiver
+		Nq = grid.N ÷ 5
+		quiver!(p,
+			X[(Nq+1)÷2:Nq:end], Y[(Nq+1)÷2:Nq:end],
+			quiver=grid.L*4 .*(model.u[(Nq+1)÷2:Nq:end], model.v[(Nq+1)÷2:Nq:end]),
+			color=arrow_col, alpha=0.7
+		)
+	end
+	
+	as_png(p)
+end
+
+# ╔═╡ c0298712-2a88-11eb-09af-bf2c39167aa6
+md"""##### Computing the velocity field for a single circular vortex
+"""
+
+# ╔═╡ e3ee80c0-12dd-11eb-110a-c336bb978c51
+begin
+	∂x(ϕ, Δx) = (ϕ[:,2:end] - ϕ[:,1:end-1])/Δx
+	∂y(ϕ, Δy) = (ϕ[2:end,:] - ϕ[1:end-1,:])/Δy
+	
+	xpad(ϕ) = hcat(zeros(size(ϕ,1)), ϕ, zeros(size(ϕ,1)))
+	ypad(ϕ) = vcat(zeros(size(ϕ,2))', ϕ, zeros(size(ϕ,2))')
+	
+	xitp(ϕ) = 0.5*(ϕ[:,2:end]+ϕ[:,1:end-1])
+	yitp(ϕ) = 0.5*(ϕ[2:end,:]+ϕ[1:end-1,:])
+	
+	function diagnose_velocities(ψ, G)
+		u = xitp(∂y(ψ, G.Δy/G.L))
+		v = yitp(-∂x(ψ, G.Δx/G.L))
+		return u, v
+	end
+end
+
+# ╔═╡ df706ebc-2a63-11eb-0b09-fd9f151cb5a8
+function impose_no_flux!(u, v)
+	u[1,:] .= 0.; v[1,:] .= 0.;
+	u[end,:] .= 0.; v[end,:] .= 0.;
+	u[:,1] .= 0.; v[:,1] .= 0.;
+	u[:,end] .= 0.; v[:,end] .= 0.;
+end
+
+# ╔═╡ e2e4cfac-2a63-11eb-1b7f-9d8d5d304b43
+function PointVortex(G; Ω=1., a=0.2, x0=0.5, y0=0.)
+	x = reshape(0. -G.Δx/(G.L):G.Δx/G.L:1. +G.Δx/(G.L), (1, G.Nx+1))
+	y = reshape(-1. -G.Δy/(G.L):G.Δy/G.L:1. +G.Δy/(G.L), (G.Ny+1, 1))
+	
+	function ψ̂(x,y)
+		r = sqrt.((y .-y0).^2 .+ (x .-x0).^2)
+		
+		stream = -Ω/4*r.^2
+		stream[r .> a] = -Ω*a^2/4*(1. .+ 2*log.(r[r .> a]/a))
+		
+		return stream
+	end
+		
+	u, v = diagnose_velocities(ψ̂(x, y), G)
+	impose_no_flux!(u, v)
+	
+	return u, v
+end
+
+# ╔═╡ bb084ace-12e2-11eb-2dfc-111e90eabfdd
+md"""##### Computing a quasi-realistic ocean velocity field $\vec{u} = (u, v)$
+Our velocity field is given by an analytical solution to the classic wind-driven gyre
+problem, which is given by solving the fourth-order partial differential equation:
+
+$- \epsilon_{M} \hat{\nabla}^{4} \hat{\Psi} + \frac{\partial \hat{\Psi} }{ \partial \hat{x}} = \nabla \times \hat{\tau} \mathbf{z},$
+
+where the hats denote that all of the variables have been non-dimensionalized and all of their constant coefficients have been bundles into the single parameter $\epsilon_{M} \equiv \dfrac{\nu}{\beta L^3}$.
+
+The solution makes use of an advanced *asymptotic method* (valid in the limit that $\epsilon \ll 1$) known as *boundary layer analysis* (see MIT course 18.305 to learn more). 
+"""
+
+
+
+# ╔═╡ ecaab27e-2a16-11eb-0e99-87c91e659cf3
+function DoubleGyre(G; β=2e-11, τ₀=0.1, ρ₀=1.e3, ν=1.e5, κ=1.e5, H=1000.)
+	ϵM = ν/(β*G.L^3)
+	ϵ = ϵM^(1/3.)
+	x = reshape(0. -G.Δx/(G.L):G.Δx/G.L:1. +G.Δx/(G.L), (1, G.Nx+1))
+	y = reshape(-1. -G.Δy/(G.L):G.Δy/G.L:1. +G.Δy/(G.L), (G.Ny+1, 1))
+	
+	ψ̂(x,y) = π*sin.(π*y) * (
+		1 .- x - exp.(-x/(2*ϵ)) .* (
+			cos.(√3*x/(2*ϵ)) .+
+			(1. /√3)*sin.(√3*x/(2*ϵ))
+			)
+		.+ ϵ*exp.((x .- 1.)/ϵ)
+	)
+		
+	u, v = (τ₀/ρ₀)/(β*G.L*H) .* diagnose_velocities(ψ̂(x, y), G)
+	impose_no_flux!(u, v)
+	
+	return u, v
+end
+
+# ╔═╡ e59d869c-2a88-11eb-2511-5d5b4b380b80
+md"""
+##### Some simple initial temperature fields
+"""
+
+# ╔═╡ c4424838-12e2-11eb-25eb-058344b39c8b
+linearT(G) = 0.5*(1. .+[ -(y/G.L) for y in G.y[:, 1], x in G.x[1, :] ])
+
+# ╔═╡ 3d12c114-2a0a-11eb-131e-d1a39b4f440b
+function InitBox(G; value=1., nx=2, ny=2, xspan=false, yspan=false)
+	T = zeros(G)
+	T[G.Ny÷2-ny:G.Ny÷2+ny, G.Nx÷2-nx:G.Nx÷2+nx] .= value
+	if xspan
+		T[G.Ny÷2-ny:G.Ny÷2+ny, :] .= value
+	end
+	if yspan
+		T[:, G.Nx÷2-nx:G.Nx÷2+nx] .= value
+	end
+	return T
+end
+
+# ╔═╡ 863a6330-2a08-11eb-3992-c3db439fb624
+begin
+	G = Grid(10, 6.e6);
+	P = Parameters(κ_ex);
+	
+	# u, v = zeros(G), zeros(G)
+	# u, v = PointVortex(G, Ω=0.5)
+	u, v = DoubleGyre(G)
+
+	# IC = InitBox(G)
+	IC = InitBox(G, xspan=true)
+	# IC = linearT(G)
+	
+	model = OceanModel(G, P, u*2. ^U_ex, v*2. ^U_ex)
+	Δt = 12*60*60
+	
+	ocean_sim = ClimateModelSimulation(model, copy(IC), Δt)
+end;
+
+# ╔═╡ dc9d12d0-2a9a-11eb-3dae-85b3b6029658
+begin
+	heat_capacity = 51.
+	total_heat_content = sum(heat_capacity*ocean_sim.T*(ocean_sim.model.G.Δx*ocean_sim.model.G.Δy))*1e-15
+	mean_temp = mean(ocean_sim.T)
+end;
+
+# ╔═╡ bff89550-2a9a-11eb-3038-d70249c96219
+begin
+	# go_ex
+	md"""
+	Let's make sure our model conserves energy. We have not added any energy to the system: advection and diffusion just move the energy around. The total heat content is $(round(total_heat_content, digits=3)) peta-Joules and the average temperature is $(round(mean_temp, digits=2)) °C.
+	"""
+end
+
+# ╔═╡ d9e23a5a-2a8b-11eb-23f1-73ff28be9f12
+md"**The CFL condition**
+
+The CFL condition is defined by $\text{CFL} = \dfrac{\max\left(\sqrt{u² + v²}\right)Δt}{Δx} =$ $(round(CFL_adv(ocean_sim), digits=2))
+"
+
+# ╔═╡ 6b3b6030-2066-11eb-3343-e19284638efb
+plot_kernel(A) = heatmap(
+	collect(A),
+	color=:bluesreds, clims=(-maximum(abs.(A)), maximum(abs.(A))), colorbar=false,
+	xticks=false, yticks=false, size=(30+30*size(A, 2), 30+30*size(A, 1)), xaxis=false, yaxis=false
+)
+
+# ╔═╡ 1e8d37ee-2a97-11eb-1d45-6b426b25d4eb
+begin
+	xgrad_kernel = OffsetArray(reshape([-1., 0, 1.], 1, 3),  0:0, -1:1)
+	plot_kernel(xgrad_kernel)
+end
+
+# ╔═╡ 682f2530-2a97-11eb-3ee6-99a7c79b3767
+begin
+	ygrad_kernel = OffsetArray(reshape([-1., 0, 1.], 3, 1),  -1:1, 0:0)
+	plot_kernel(ygrad_kernel)
+end
+
+# ╔═╡ f4c884fc-2a97-11eb-1ba9-01bf579f8b43
+begin
+	function advect(T, u, v, Δy, Δx, j, i)
+		return .-(
+			u[j, i].*sum(xgrad_kernel[0, -1:1].*T[j, i-1:i+1])/(2Δx) .+
+			v[j, i].*sum(ygrad_kernel[-1:1, 0].*T[j-1:j+1, i])/(2Δy)
+		)
+	end
+	advect(T, u, v, Δy, Δx) = [
+		advect(T, u, v, Δy, Δx, j, i)
+		for j=2:size(T, 1)-1, i=2:size(T, 2)-1
+	]
+	
+	advect(T, O::OceanModel) = advect(T, O.u, O.v, O.G.Δy, O.G.Δx)
+end
+
+# ╔═╡ b629d89a-2a95-11eb-2f27-3dfa45789be4
+begin
+	xdiff_kernel = OffsetArray(reshape([1., -2., 1.], 1, 3),  0:0, -1:1)
+	ydiff_kernel = OffsetArray(reshape([1., -2., 1.], 3, 1),  -1:1, 0:0)
+
+	[plot_kernel(xdiff_kernel), plot_kernel(ydiff_kernel)]
+end
+
+# ╔═╡ ee6716c8-2a95-11eb-3a00-319ee69dd37f
+begin
+	function diffuse(T, κ, Δy, Δx, j, i)
+		return κ.*(
+			sum(xdiff_kernel[0, -1:1].*T[j, i-1:i+1])/(Δx^2) +
+			sum(ydiff_kernel[-1:1, 0].*T[j-1:j+1, i])/(Δy^2)
+		)
+	end
+	diffuse(T, κ, Δy, Δx) = [
+		diffuse(T, κ, Δy, Δx, j, i) for j=2:size(T, 1)-1, i=2:size(T, 2)-1
+	]
+	
+	diffuse(T, O::OceanModel) = diffuse(T, O.P.κ, O.G.Δy, O.G.Δx)
+end
+
+# ╔═╡ 81bb6a4a-2a9c-11eb-38bb-f7701c79afa2
+function timestep!(sim::ClimateModelSimulation{OceanModel})
+	update_ghostcells!(sim.T)
+	tendencies = advect(sim.T, sim.model) .+ diffuse(sim.T, sim.model)
+	sim.T[2:end-1, 2:end-1] .+= sim.Δt*tendencies
+	sim.iteration += 1
+end;
+
+# ╔═╡ c98f4680-2b45-11eb-2fbe-ada2cbc080ca
+for i in 1:50
+	timestep!(ocean_sim)
+end
+
+# ╔═╡ 3b24e1b0-2b46-11eb-383b-c57cbf3e68f1
+let
+	go_ex
+	if ocean_sim.iteration == 0
+		timestep!(ocean_sim)
+	else
+		for i in 1:50
+			timestep!(ocean_sim)
+		end
+	end
+	plot_state(ocean_sim, clims=(-0.1, 1), show_quiver=show_quiver, show_anomaly=show_anomaly, IC=IC)
+end
+
+# ╔═╡ 8346b590-2b41-11eb-0bc1-1ba79bb77dfb
+tvec = map(Nvec) do Npower
+	G = Grid(8*Npower, 6.e6);
+	P = Parameters(κ_ex);
+
+	# u, v = DoubleGyre(G)
+	# u, v = PointVortex(G, Ω=0.5)
+	u, v = zeros(G), zeros(G)
+
+	model = OceanModel(G, P, u, v)
+
+	IC = InitBox(G)
+	# IC = InitBox(G, nx=G.Nx÷2-1)
+	# IC = linearT(G)
+
+	Δt = 6*60*60
+	S = ClimateModelSimulation(model, copy(IC), Δt)
+
+	return @elapsed timestep!(S)
+end
+
+# ╔═╡ 794c2148-2a78-11eb-2756-5bd28b7726fa
+begin
+	plot(8*Nvec, tvec, xlabel="Number of Grid Cells (in x-direction)", ylabel="elapsed time per timestep [s]")
+end |> as_svg
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
-LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
+OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
-Distributions = "~0.25.58"
-LaTeXStrings = "~1.3.0"
+OffsetArrays = "~1.11.0"
 Plots = "~1.29.0"
 PlutoUI = "~0.7.38"
 """
@@ -795,12 +774,6 @@ deps = ["Artifacts", "Bzip2_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll",
 git-tree-sha1 = "4b859a208b2397a7a623a03449e4636bdb17bcf2"
 uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
 version = "1.16.1+1"
-
-[[Calculus]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "f641eb0a4f00c343bbc32346e1217b86f3ce9dad"
-uuid = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
-version = "0.5.1"
 
 [[ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
@@ -879,21 +852,9 @@ uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 deps = ["Mmap"]
 uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 
-[[DensityInterface]]
-deps = ["InverseFunctions", "Test"]
-git-tree-sha1 = "80c3e8639e3353e5d2912fb3a1916b8455e2494b"
-uuid = "b429d917-457f-4dbc-8f4c-0cc954292b1d"
-version = "0.4.0"
-
 [[Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
-
-[[Distributions]]
-deps = ["ChainRulesCore", "DensityInterface", "FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SparseArrays", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns", "Test"]
-git-tree-sha1 = "8a6b49396a4058771c5c072239b2e0a76e2e898c"
-uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.25.58"
 
 [[DocStringExtensions]]
 deps = ["LibGit2"]
@@ -905,12 +866,6 @@ version = "0.8.6"
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 version = "1.6.0"
-
-[[DualNumbers]]
-deps = ["Calculus", "NaNMath", "SpecialFunctions"]
-git-tree-sha1 = "5837a837389fccf076445fce071c8ddaea35a566"
-uuid = "fa6b7ba4-c1ee-5f82-b5fc-ecf0adba8f74"
-version = "0.6.8"
 
 [[EarCut_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -938,12 +893,6 @@ version = "4.4.0+0"
 
 [[FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
-
-[[FillArrays]]
-deps = ["LinearAlgebra", "Random", "SparseArrays", "Statistics"]
-git-tree-sha1 = "246621d23d1f43e3b9c368bf3b72b2331a27c286"
-uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
-version = "0.13.2"
 
 [[FixedPointNumbers]]
 deps = ["Statistics"]
@@ -1033,12 +982,6 @@ deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll",
 git-tree-sha1 = "129acf094d168394e80ee1dc4bc06ec835e510a3"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "2.8.1+1"
-
-[[HypergeometricFunctions]]
-deps = ["DualNumbers", "LinearAlgebra", "SpecialFunctions", "Test"]
-git-tree-sha1 = "65e4589030ef3c44d3b90bdc5aac462b4bb05567"
-uuid = "34004b35-14d8-5ef3-9330-4cdb6864b03a"
-version = "0.3.8"
 
 [[Hyperscript]]
 deps = ["Test"]
@@ -1266,6 +1209,12 @@ version = "1.0.0"
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 version = "1.2.0"
 
+[[OffsetArrays]]
+deps = ["Adapt"]
+git-tree-sha1 = "aee446d0b3d5764e35289762f6a18e8ea041a592"
+uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+version = "1.11.0"
+
 [[Ogg_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "887579a3eb005446d514ab7aeac5d1d027658b8f"
@@ -1310,12 +1259,6 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "b2a7af664e098055a7529ad1a900ded962bca488"
 uuid = "2f80f16e-611a-54ab-bc61-aa92de5b98fc"
 version = "8.44.0+0"
-
-[[PDMats]]
-deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
-git-tree-sha1 = "027185efff6be268abbaf30cfd53ca9b59e3c857"
-uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
-version = "0.11.10"
 
 [[Parsers]]
 deps = ["Dates"]
@@ -1374,12 +1317,6 @@ git-tree-sha1 = "c6c0f690d0cc7caddb74cef7aa847b824a16b256"
 uuid = "ea2cea3b-5b76-57ae-a6ef-0a8af62496e1"
 version = "5.15.3+1"
 
-[[QuadGK]]
-deps = ["DataStructures", "LinearAlgebra"]
-git-tree-sha1 = "78aadffb3efd2155af139781b8a8df1ef279ea39"
-uuid = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
-version = "2.4.2"
-
 [[REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
@@ -1415,18 +1352,6 @@ deps = ["UUIDs"]
 git-tree-sha1 = "838a3a4188e2ded87a4f9f184b4b0d78a1e91cb7"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "1.3.0"
-
-[[Rmath]]
-deps = ["Random", "Rmath_jll"]
-git-tree-sha1 = "bf3188feca147ce108c76ad82c2792c57abe7b1f"
-uuid = "79098fc4-a85e-5d69-aa6a-4863f24498fa"
-version = "0.7.0"
-
-[[Rmath_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "68db32dff12bb6127bac73c209881191bf0efbb7"
-uuid = "f50d1b31-88e8-58de-be2c-1cc44531875f"
-version = "0.3.0+0"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
@@ -1492,21 +1417,11 @@ git-tree-sha1 = "8977b17906b0a1cc74ab2e3a05faa16cf08a8291"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.33.16"
 
-[[StatsFuns]]
-deps = ["ChainRulesCore", "HypergeometricFunctions", "InverseFunctions", "IrrationalConstants", "LogExpFunctions", "Reexport", "Rmath", "SpecialFunctions"]
-git-tree-sha1 = "ca9f8a0c9f2e41431dc5b7697058a3f8f8b89498"
-uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
-version = "1.0.0"
-
 [[StructArrays]]
 deps = ["Adapt", "DataAPI", "StaticArrays", "Tables"]
 git-tree-sha1 = "e75d82493681dfd884a357952bbd7ab0608e1dc3"
 uuid = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 version = "0.6.7"
-
-[[SuiteSparse]]
-deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
-uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 
 [[TOML]]
 deps = ["Dates"]
@@ -1788,104 +1703,66 @@ version = "0.9.1+5"
 """
 
 # ╔═╡ Cell order:
-# ╟─169727be-2433-11eb-07ae-ab7976b5be90
-# ╟─18be4f7c-2433-11eb-33cb-8d90ca6f124c
-# ╟─21524c08-2433-11eb-0c55-47b1bdc9e459
-# ╠═23335418-2433-11eb-05e4-2b35dc6cca0e
-# ╟─253f4da0-2433-11eb-1e48-4906059607d3
-# ╠═1e06178a-1fbf-11eb-32b3-61769a79b7c0
-# ╟─87e68a4a-2433-11eb-3e9d-21675850ed71
-# ╟─fe3304f8-2668-11eb-066d-fdacadce5a19
-# ╠═930d7154-1fbf-11eb-1c3a-b1970d291811
-# ╟─1312525c-1fc0-11eb-2756-5bc3101d2260
-# ╠═c4398f9c-1fc4-11eb-0bbb-37f066c6027d
-# ╠═0cf80347-439f-4c4c-83a5-cb11e1fab440
-# ╟─7f961bc0-1fc5-11eb-1f18-612aeff0d8df
-# ╠═25f92dec-1fc4-11eb-055d-f34deea81d0e
-# ╟─fa7e6f7e-2434-11eb-1e61-1b1858bb0988
-# ╟─16348b6a-1fc2-11eb-0b9c-65df528db2a1
-# ╟─e296c6e8-259c-11eb-1385-53f757f4d585
-# ╠═a86f13de-259d-11eb-3f46-1f6fb40020ce
-# ╟─3d66bd30-259d-11eb-2694-471fb3a4a7be
-# ╠═5f82dec8-259e-11eb-2f4f-4d661f44ef41
-# ╟─56b68356-2601-11eb-39a9-5f4b8e580b87
-# ╟─7d815988-1fc7-11eb-322a-4509e7128ce3
-# ╟─aed8f00e-266b-11eb-156d-8bb09de0dc2b
-# ╟─269200ec-259f-11eb-353b-0b73523ef71a
-# ╠═e10a9b70-25a0-11eb-2aed-17ed8221c208
-# ╟─2dfab366-25a1-11eb-15c9-b3dd9cd6b96c
-# ╠═25dba096-7104-411b-921d-f0265e239626
-# ╠═50ea30ba-25a1-11eb-05d8-b3d579f85652
-# ╟─51e2e742-25a1-11eb-2511-ab3434eacc3e
-# ╟─bade1372-25a1-11eb-35f4-4b43d4e8d156
-# ╠═02232964-2603-11eb-2c4c-c7b7e5fed7d1
-# ╠═736ed1b6-1fc2-11eb-359e-a1be0a188670
-# ╠═49cb5174-1fc3-11eb-3670-c3868c9b0255
-# ╟─f3abc83c-1fc7-11eb-1aa8-01ce67c8bdde
-# ╠═3d72ab3a-2689-11eb-360d-9b3d829b78a9
-# ╟─b6d7a362-1fc8-11eb-03bc-89464b55c6fc
-# ╠═1f148d9a-1fc8-11eb-158e-9d784e390b24
-# ╟─cf8dca6c-1fc8-11eb-1f89-099e6ba53c22
-# ╠═02173c7a-2695-11eb-251c-65efb5b4a45f
-# ╟─440271b6-25e8-11eb-26ce-1b80aa176aca
-# ╠═cf276892-25e7-11eb-38f0-03f75c90dd9e
-# ╟─5b5f25f0-266c-11eb-25d4-17e411c850c9
-# ╟─3f823490-266d-11eb-1ba4-d5a23975c335
-# ╟─971f401e-266c-11eb-3104-171ae299ef70
-# ╠═746aa5bc-266c-11eb-14c9-63ccc313f5de
-# ╟─a919d584-2670-11eb-1cf9-2327c8135d6d
-# ╠═bfb07a0a-2670-11eb-3938-772499c637b1
-# ╟─12cbbab0-2671-11eb-2b1f-038c206e84ce
-# ╠═9596c2dc-2671-11eb-36b9-c1af7e5f1089
-# ╠═f94a1d56-2671-11eb-2cdc-810a9c7a8a5f
-# ╟─4b091fac-2672-11eb-0db8-75457788d85e
-# ╟─9cdc5f84-2671-11eb-3c78-e3495bc64d33
-# ╠═f688f9f2-2671-11eb-1d71-a57c9817433f
-# ╠═049a866e-2672-11eb-29f7-bfea7ad8f572
-# ╠═09901de6-2672-11eb-3d50-05b176b729e7
-# ╠═aea0d0b4-2672-11eb-231e-395c863827d3
-# ╟─9c32db5c-1fc9-11eb-029a-d5d554de1067
-# ╠═19957754-252d-11eb-1e0a-930b5208f5ac
-# ╠═40f1e7d8-252d-11eb-0549-49ca4e806e16
-# ╟─ee1be5dc-252b-11eb-0865-291aa823b9e9
-# ╟─06c5139e-252d-11eb-2645-8b324b24c405
-# ╠═f2e55166-25ff-11eb-0297-796e97c62b07
-# ╟─1ea81214-1fca-11eb-2442-7b0b448b49d6
-# ╟─a0ef04b0-25e9-11eb-1110-cde93601f712
-# ╟─3e310cf8-25ec-11eb-07da-cb4a2c71ae34
-# ╟─d6d1b312-2543-11eb-1cb2-e5b801686ffb
-# ╠═378aed18-252b-11eb-0b37-a3b511af2cb5
-# ╟─3cbc95ba-2685-11eb-3810-3bf38aa33231
-# ╟─68b2a560-2536-11eb-0cc4-27793b4d6a70
-# ╟─0e19f82e-2685-11eb-2e99-0d094c1aa520
-# ╟─1eabe908-268b-11eb-329b-b35160ec951e
-# ╠═1d388372-2695-11eb-3068-7b28a2ccb9ac
-# ╟─53c2eaf6-268b-11eb-0899-b91c03713da4
-# ╠═06d28052-2531-11eb-39e2-e9613ab0401c
-# ╟─4c9173ac-2685-11eb-2129-99071821ebeb
-# ╠═736515ba-2685-11eb-38cb-65bfcf8d1b8d
-# ╟─8b06b944-268c-11eb-0bfc-8d4dd21e1f02
-# ╟─09ce27ca-268c-11eb-0cdd-c9801db876f8
-# ╟─298deff4-2676-11eb-2595-e7e22f613ea1
-# ╟─2bbf5a70-2676-11eb-1085-7130d4a30443
-# ╟─de95efae-2675-11eb-0909-73afcd68fd42
-# ╟─c78e02b4-268a-11eb-0af7-f7c7620fcc34
-# ╠═d7801e88-2530-11eb-0b93-6f1c78d00eea
-# ╠═607058ec-253c-11eb-0fb6-add8cfb73a4f
-# ╟─9c1f73e0-268a-11eb-2bf1-216a5d869568
-# ╟─11096250-2544-11eb-057b-d7112f20b05c
-# ╠═9eb07a6e-2687-11eb-0de3-7bc6aa0eefb0
-# ╟─cb15cd88-25ed-11eb-2be4-f31500a726c8
-# ╟─232b9bec-2544-11eb-0401-97a60bb172fc
-# ╟─36e2dfea-2433-11eb-1c90-bb93ab25b33c
-# ╟─36ea4410-2433-11eb-1d98-ab4016245d95
-# ╟─36f8c1e8-2433-11eb-1f6e-69dc552a4a07
-# ╟─37061f1e-2433-11eb-3879-2d31dc70a771
-# ╟─371352ec-2433-11eb-153d-379afa8ed15e
-# ╟─372002e4-2433-11eb-0b25-39ce1b1dd3d1
-# ╟─372c1480-2433-11eb-3c4e-95a37d51835f
-# ╟─3737be8e-2433-11eb-2049-2d6d8a5e4753
-# ╟─374522c4-2433-11eb-3da3-17419949defc
-# ╟─37552044-2433-11eb-1984-d16e355a7c10
+# ╟─2cad38c2-b71d-11eb-24fd-3b460ca71531
+# ╠═9c8a7e5a-12dd-11eb-1b99-cd1d52aefa1d
+# ╠═3b3ffbaf-0fa3-4dec-afb9-5274116bc3d3
+# ╟─0f8db6f4-2113-11eb-18b4-21a469c67f3a
+# ╟─ed741ec6-1f75-11eb-03be-ad6284abaab8
+# ╟─ac759b96-2114-11eb-24cb-d50b556f4142
+# ╟─3a4a1aea-2118-11eb-30a9-57b87f2ddfae
+# ╟─023779a0-2a95-11eb-35b5-7be93c43afaf
+# ╟─b1b5625e-211a-11eb-3ee1-3ba9c9cc375a
+# ╠═1e8d37ee-2a97-11eb-1d45-6b426b25d4eb
+# ╟─3578b158-2a97-11eb-0771-bf6d82d3b6d1
+# ╟─682f2530-2a97-11eb-3ee6-99a7c79b3767
+# ╟─7f3c9550-2a97-11eb-1549-455009025872
+# ╠═f4c884fc-2a97-11eb-1ba9-01bf579f8b43
+# ╟─0127bca6-2a99-11eb-16a0-8d7af66694f8
+# ╟─b629d89a-2a95-11eb-2f27-3dfa45789be4
+# ╟─eac507ce-2a99-11eb-3eba-0780a4a7e078
+# ╠═ee6716c8-2a95-11eb-3a00-319ee69dd37f
+# ╟─09f179c0-2a9a-11eb-1d0f-e59012f9e77b
+# ╠═7caca2fa-2a9a-11eb-373f-156a459a1637
+# ╟─1f06bc34-2a9b-11eb-1030-ff12d103176c
+# ╠═2ef2f0cc-2a9b-11eb-03c6-5d8b4c6ae822
+# ╠═4558d4f8-2a9b-11eb-1f56-416975bcd180
+# ╟─74aa7512-2a9c-11eb-118c-c7a5b60eac1b
+# ╠═81bb6a4a-2a9c-11eb-38bb-f7701c79afa2
+# ╟─13eb3966-2a9a-11eb-086c-05510a3f5b80
+# ╠═cd2ee4ca-2a06-11eb-0e61-e9a2ecf72bd6
+# ╠═2a93145e-2a09-11eb-323b-01817062aa89
+# ╠═32663184-2a81-11eb-0dd1-dd1e10ed9ec6
+# ╠═d3796644-2a05-11eb-11b8-87b6e8c311f9
+# ╠═f92086c4-2a74-11eb-3c72-a1096667183b
+# ╟─31cb0c2c-2a9a-11eb-10ba-d90a00d8e03a
+# ╠═863a6330-2a08-11eb-3992-c3db439fb624
+# ╠═c98f4680-2b45-11eb-2fbe-ada2cbc080ca
+# ╟─981ef38a-2a8b-11eb-08be-b94be2924366
+# ╟─d042d25a-2a62-11eb-33fe-65494bb2fad5
+# ╟─6dbc3d34-2a89-11eb-2c80-75459a8e237a
+# ╟─c20b0e00-2a8a-11eb-045d-9db88411746f
+# ╟─933d42fa-2a67-11eb-07de-61cab7567d7d
+# ╟─c9ea0f72-2a67-11eb-20ba-376ca9c8014f
+# ╠═3b24e1b0-2b46-11eb-383b-c57cbf3e68f1
+# ╟─c3f086f4-2a9a-11eb-0978-27532cbecebf
+# ╟─bff89550-2a9a-11eb-3038-d70249c96219
+# ╟─dc9d12d0-2a9a-11eb-3dae-85b3b6029658
+# ╟─d9e23a5a-2a8b-11eb-23f1-73ff28be9f12
+# ╠═ad7b7ed6-2a9c-11eb-06b7-0f5595167575
+# ╟─a04d3dee-2a9c-11eb-040e-7bd2facb2eaa
+# ╠═16905a6a-2a78-11eb-19ea-81adddc21088
+# ╠═8346b590-2b41-11eb-0bc1-1ba79bb77dfb
+# ╠═794c2148-2a78-11eb-2756-5bd28b7726fa
+# ╠═c0e46442-27fb-11eb-2c94-15edbda3f84d
+# ╟─c0298712-2a88-11eb-09af-bf2c39167aa6
+# ╟─e2e4cfac-2a63-11eb-1b7f-9d8d5d304b43
+# ╟─e3ee80c0-12dd-11eb-110a-c336bb978c51
+# ╟─df706ebc-2a63-11eb-0b09-fd9f151cb5a8
+# ╟─bb084ace-12e2-11eb-2dfc-111e90eabfdd
+# ╟─ecaab27e-2a16-11eb-0e99-87c91e659cf3
+# ╟─e59d869c-2a88-11eb-2511-5d5b4b380b80
+# ╟─c4424838-12e2-11eb-25eb-058344b39c8b
+# ╟─3d12c114-2a0a-11eb-131e-d1a39b4f440b
+# ╟─6b3b6030-2066-11eb-3343-e19284638efb
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
