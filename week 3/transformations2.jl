@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.11
+# v0.19.13
 
 using Markdown
 using InteractiveUtils
@@ -119,6 +119,11 @@ md"""
 #  The fun stuff: playing with transforms
 """
 
+# ╔═╡ 23ade8ee-7a09-11eb-0e40-296c6b831d74
+md"""
+Grab a [linear](#a0afe3ae-76b9-11eb-2301-cde7260ddd7f) or [nonlinear](#a290d5e2-7a02-11eb-37db-41bf86b1f3b3) transform, or make up your own!
+"""
+
 # ╔═╡ 005ca75a-7622-11eb-2ba4-9f450e71df1f
 let
 
@@ -127,7 +132,7 @@ md"""
 	
 This is a "scrubbable" matrix: click on the number and drag to change!
 	
-**A =**  
+**A = *  
 	
 ``(``	
  $(@bind a Scrubbable( range; default=1.0))
@@ -143,11 +148,6 @@ $(@bind d Scrubbable(range; default=1.0))
 	
 """
 end
-
-# ╔═╡ 23ade8ee-7a09-11eb-0e40-296c6b831d74
-md"""
-Grab a [linear](#a0afe3ae-76b9-11eb-2301-cde7260ddd7f) or [nonlinear](#a290d5e2-7a02-11eb-37db-41bf86b1f3b3) transform, or make up your own!
-"""
 
 # ╔═╡ 2efaa336-7630-11eb-0c17-a7d4a0141dac
 md"""
@@ -168,7 +168,8 @@ h= $(@bind h Slider(.1:.1:10, show_value=true, default = 5))
 """
 
 # ╔═╡ b76a5bd6-802f-11eb-0951-1f1092dee8de
-1+1
+m = [a b
+ 	c d]
 
 # ╔═╡ 5d33f6ea-7e9c-11eb-2fb3-dbb7cb07c60c
 md"""
@@ -291,10 +292,13 @@ begin
 	 shear(α)  = ((x, y),) -> SA[x + α*y, y]
 end
 
+# ╔═╡ d55aa8d7-cbf8-48fc-b10b-63359a12461d
+parentmodule(shear)
+
 # ╔═╡ 58a30e54-7a08-11eb-1c57-dfef0000255f
 # T⁻¹ = id
-#  T⁻¹ = rotate(α)
-  T⁻¹ = shear(α)
+  T⁻¹ = rotate(α)
+#  T⁻¹ = shear(α)
 #   T⁻¹ = lin(A) # uses the scrubbable 
 #   T⁻¹ = shear(α) ∘ shear(-α)
  # T⁻¹ = nonlin_shear(α)  
@@ -303,7 +307,7 @@ end
 #  T⁻¹ =  xy 
 # T⁻¹ = warp(α)
 # T⁻¹ = ((x,y),)-> (x+α*y^2,y+α*x^2) # may be non-invertible
-
+# T⁻¹ = scalex(α)
 # T⁻¹ = ((x,y),)-> (x,y^2)  
 # T⁻¹  = flipy ∘ ((x,y),) ->  ( (β*x - α*y)/(β - y)  , -h*y/ (β - y)   ) 
 
@@ -312,11 +316,14 @@ md"""
 In fact we can write down the *most general* linear transformation in one of two ways:
 """
 
+# ╔═╡ c1b1ad8a-5606-4e86-bdd0-dbca3f4a2afe
+SA[1,2]
+
 # ╔═╡ 15283aba-7aa2-11eb-389c-e9f215bd03e2
 begin
 	lin(a, b, c, d) = ((x, y),) -> (a*x + b*y, c*x + d*y)
 	
-	lin(A) = v-> A * [v...]  # linear algebra version using matrix multiplication
+	lin(A) = v -> A * [v...]  # linear algebra version using matrix multiplication
 end
 
 # ╔═╡ 2612d2c2-7aa2-11eb-085a-1f27b6174995
@@ -844,8 +851,7 @@ begin
 		xy_to_ij =  translate(rows/2, cols/2) ∘ swap ∘ flipy ∘ scale(m/2)
 		
 		# apply the function and "snap to grid"
-		i, j = floor.(Int, xy_to_ij((x, y))) 
-	
+		i, j = floor.(Int, xy_to_ij((x, y)))
 	end
 	
 	function getpixel(img,i::Int,j::Int; circular::Bool=false, r::Real=200)   
@@ -873,13 +879,10 @@ begin
 	# 	getpixel(img,i,j)
 	# end
 	
-	function transform_ij_to_xy(i::Int,j::Int,pixels)
-	
+	function transform_ij_to_xy(i::Int,j::Int, pixels)
 	   ij_to_xy =  scale(2/pixels) ∘ flipy ∘ swap ∘ translate(-pixels/2,-pixels/2)
 	   ij_to_xy([i,j])
-	end
-
-	    
+	end	    
 end
 
 # ╔═╡ da73d9f6-7a8d-11eb-2e6f-1b819bbb0185
@@ -959,10 +962,6 @@ begin
 			for i = 1:pixels, j = 1:pixels
 		]	
 end
-
-# ╔═╡ ccea7244-7f2f-11eb-1b7b-b9b8473a8c74
-transform_xy_to_ij(img,0.0,0.0)
-
 
 # ╔═╡ c2e0e032-7c4c-11eb-2b2a-27fe69c42a01
 img;
@@ -1715,7 +1714,7 @@ version = "1.7.0"
 [[Tar]]
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
-version = "1.10.0"
+version = "1.10.1"
 
 [[TensorCore]]
 deps = ["LinearAlgebra"]
@@ -1820,23 +1819,23 @@ version = "17.4.0+0"
 # ╠═6b473b2d-4326-46b4-af38-07b61de287fc
 # ╟─230cba36-9d0a-4726-9e55-7df2c6743968
 # ╠═96766502-7a06-11eb-00cc-29849773dbcf
+# ╠═d55aa8d7-cbf8-48fc-b10b-63359a12461d
 # ╟─890d30b9-2cd0-4d3a-99f6-f7d3d7858fda
 # ╟─85fba8fb-a9ea-444d-831b-ec6489b58b4f
 # ╟─06beabc3-2aa7-4e78-9bae-dc4b37251aa2
 # ╟─26dd0e98-7a75-11eb-2196-5d7bda201b19
 # ╟─e0b657ce-7a03-11eb-1f9d-f32168cb5394
-# ╟─005ca75a-7622-11eb-2ba4-9f450e71df1f
 # ╟─23ade8ee-7a09-11eb-0e40-296c6b831d74
 # ╠═58a30e54-7a08-11eb-1c57-dfef0000255f
+# ╟─005ca75a-7622-11eb-2ba4-9f450e71df1f
 # ╟─2efaa336-7630-11eb-0c17-a7d4a0141dac
 # ╟─7f28ac40-7914-11eb-1403-b7bec34aeb94
 # ╟─ce55beee-7643-11eb-04bc-b517703facff
 # ╠═b76a5bd6-802f-11eb-0951-1f1092dee8de
-# ╟─5d33f6ea-7e9c-11eb-2fb3-dbb7cb07c60c
+# ╠═5d33f6ea-7e9c-11eb-2fb3-dbb7cb07c60c
 # ╟─45dccdec-7912-11eb-01b4-a97e30344f39
 # ╟─d2fb356e-7f32-11eb-177d-4f47d6c9e59b
 # ╠═ca28189e-7e9a-11eb-21d6-bd819f3e0d3a
-# ╠═ccea7244-7f2f-11eb-1b7b-b9b8473a8c74
 # ╟─55b5fc92-7a76-11eb-3fba-854c65eb87f9
 # ╟─85686412-7a75-11eb-3d83-9f2f8a3c5509
 # ╟─a7df7346-79f8-11eb-1de6-71f027c46643
@@ -1852,6 +1851,7 @@ version = "17.4.0+0"
 # ╟─fc2deb7c-7aa1-11eb-019f-d3e3c80b9ff1
 # ╠═d364f91a-76b9-11eb-1807-75e733940d53
 # ╟─080d87e0-7aa2-11eb-18f5-2fb6a7a5bcb4
+# ╠═c1b1ad8a-5606-4e86-bdd0-dbca3f4a2afe
 # ╠═15283aba-7aa2-11eb-389c-e9f215bd03e2
 # ╟─2612d2c2-7aa2-11eb-085a-1f27b6174995
 # ╟─a290d5e2-7a02-11eb-37db-41bf86b1f3b3
@@ -1893,7 +1893,7 @@ version = "17.4.0+0"
 # ╟─57848b42-7a8f-11eb-023a-cf247cb53819
 # ╟─da73d9f6-7a8d-11eb-2e6f-1b819bbb0185
 # ╟─620ee7d8-7a8f-11eb-3888-356c27a2d591
-# ╟─30f522a0-7a8e-11eb-2181-8313760778ef
+# ╠═30f522a0-7a8e-11eb-2181-8313760778ef
 # ╟─04da7710-7a91-11eb-02a1-0b6e889150a2
 # ╠═c2e0e032-7c4c-11eb-2b2a-27fe69c42a01
 # ╠═c662e3d8-7c4c-11eb-0dcf-f9da2bd14baf

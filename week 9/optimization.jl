@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.11
+# v0.19.13
 
 using Markdown
 using InteractiveUtils
@@ -138,6 +138,8 @@ md"""
 # ╔═╡ d22fd4bd-acfe-4e27-a484-3c2d6138f44e
 md"""
 ## The Statistician's formula
+
+
 """
 
 # ╔═╡ da0d208b-7d30-470a-b180-4cbfa98298e7
@@ -173,6 +175,15 @@ This is even shorter, but you need to know linear algebra. But it also generaliz
 
 # ╔═╡ e0b4c2a9-a68b-47af-bf9c-f1a9f0256fd4
 [one.(x) x]\y  # even shorter but you need to know linear algebra, but generalizes
+
+# ╔═╡ d129cd2a-4cdc-4900-9162-13d8a3ed7933
+[one.(x) x]' * y
+
+# ╔═╡ 72ff1e22-4bc8-4104-97ee-963c2d96b2bb
+[one.(x) x]
+
+# ╔═╡ daf81262-7172-418d-ac3f-5cb7efbc84c3
+y
 
 # ╔═╡ 6d25e38e-c18a-48b3-8b12-b670f5a5180f
 md"""
@@ -1256,7 +1267,7 @@ version = "1.7.0"
 [[Tar]]
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
-version = "1.10.0"
+version = "1.10.1"
 
 [[TensorCore]]
 deps = ["LinearAlgebra"]
@@ -1542,7 +1553,7 @@ version = "0.9.1+5"
 # ╟─cdc25782-65a8-43c5-8090-c1241b798b1a
 # ╟─9ec4dd43-c95a-4f11-b844-fd6ccc93bb68
 # ╟─9276b315-27b2-4b01-8fc8-4ebbba58d080
-# ╟─d22fd4bd-acfe-4e27-a484-3c2d6138f44e
+# ╠═d22fd4bd-acfe-4e27-a484-3c2d6138f44e
 # ╠═da0d208b-7d30-470a-b180-4cbfa98298e7
 # ╟─6cf233a7-9b8b-47aa-a3ad-2440d001af73
 # ╠═613c3e5f-bbdd-4cf9-b30f-69e2c42ae0ec
@@ -1551,6 +1562,9 @@ version = "0.9.1+5"
 # ╟─05e512ca-3123-48d9-9c11-5d6e9d90ef95
 # ╟─939900b4-5327-43b4-883f-740c173c0db4
 # ╠═e0b4c2a9-a68b-47af-bf9c-f1a9f0256fd4
+# ╠═d129cd2a-4cdc-4900-9162-13d8a3ed7933
+# ╠═72ff1e22-4bc8-4104-97ee-963c2d96b2bb
+# ╠═daf81262-7172-418d-ac3f-5cb7efbc84c3
 # ╟─6d25e38e-c18a-48b3-8b12-b670f5a5180f
 # ╟─f291c0cb-51ee-4b30-9e07-e7cf374f809e
 # ╟─aa06a447-d6c5-48ee-9864-c1f431fe5e4b

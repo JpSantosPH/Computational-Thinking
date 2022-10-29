@@ -98,3 +98,5 @@ img = copy(img_original)
 
 new_imgs = cut_seam(img, 77)
 new_imgs[77]
+
+parentmodule(load)

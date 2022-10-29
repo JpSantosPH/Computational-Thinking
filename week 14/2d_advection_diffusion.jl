@@ -613,6 +613,32 @@ md"**The CFL condition**
 The CFL condition is defined by $\text{CFL} = \dfrac{\max\left(\sqrt{u² + v²}\right)Δt}{Δx} =$ $(round(CFL_adv(ocean_sim), digits=2))
 "
 
+# ╔═╡ 8346b590-2b41-11eb-0bc1-1ba79bb77dfb
+tvec = map(Nvec) do Npower
+	G = Grid(8*Npower, 6.e6);
+	P = Parameters(κ_ex);
+
+	# u, v = DoubleGyre(G)
+	# u, v = PointVortex(G, Ω=0.5)
+	u, v = zeros(G), zeros(G)
+
+	model = OceanModel(G, P, u, v)
+
+	IC = InitBox(G)
+	# IC = InitBox(G, nx=G.Nx÷2-1)
+	# IC = linearT(G)
+
+	Δt = 6*60*60
+	S = ClimateModelSimulation(model, copy(IC), Δt)
+
+	return @elapsed timestep!(S)
+end
+
+# ╔═╡ 794c2148-2a78-11eb-2756-5bd28b7726fa
+begin
+	plot(8*Nvec, tvec, xlabel="Number of Grid Cells (in x-direction)", ylabel="elapsed time per timestep [s]")
+end |> as_svg
+
 # ╔═╡ 6b3b6030-2066-11eb-3343-e19284638efb
 plot_kernel(A) = heatmap(
 	collect(A),
@@ -696,32 +722,6 @@ let
 	end
 	plot_state(ocean_sim, clims=(-0.1, 1), show_quiver=show_quiver, show_anomaly=show_anomaly, IC=IC)
 end
-
-# ╔═╡ 8346b590-2b41-11eb-0bc1-1ba79bb77dfb
-tvec = map(Nvec) do Npower
-	G = Grid(8*Npower, 6.e6);
-	P = Parameters(κ_ex);
-
-	# u, v = DoubleGyre(G)
-	# u, v = PointVortex(G, Ω=0.5)
-	u, v = zeros(G), zeros(G)
-
-	model = OceanModel(G, P, u, v)
-
-	IC = InitBox(G)
-	# IC = InitBox(G, nx=G.Nx÷2-1)
-	# IC = linearT(G)
-
-	Δt = 6*60*60
-	S = ClimateModelSimulation(model, copy(IC), Δt)
-
-	return @elapsed timestep!(S)
-end
-
-# ╔═╡ 794c2148-2a78-11eb-2756-5bd28b7726fa
-begin
-	plot(8*Nvec, tvec, xlabel="Number of Grid Cells (in x-direction)", ylabel="elapsed time per timestep [s]")
-end |> as_svg
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """

@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.11
+# v0.19.12
 
 using Markdown
 using InteractiveUtils
@@ -2436,10 +2436,10 @@ version = "0.9.1+5"
 # ╟─a2b2eae2-762e-41c3-a546-0caedc79db7d
 # ╟─91b34e59-e4d2-45b7-9e2b-1b95748e5d6a
 # ╟─22bddfca-fd1c-4dc7-85f3-f864c3b53407
-# ╟─6f554dc0-220c-11eb-341f-1b66de841c86
+# ╠═6f554dc0-220c-11eb-341f-1b66de841c86
 # ╟─2c6f4b31-2f08-4e24-8e31-ad80d2700fa8
 # ╟─822c015a-8bb3-4432-a2d4-2e2ba4f906a6
-# ╟─816de40c-220c-11eb-2d3a-23e6267cd529
+# ╠═816de40c-220c-11eb-2d3a-23e6267cd529
 # ╟─d21f6358-220c-11eb-00b8-03fe0746fdc9
 # ╟─735bb47e-220d-11eb-1ba6-8d591a935857
 # ╟─79b148b6-220d-11eb-2785-25d05068aeed
@@ -2456,7 +2456,7 @@ version = "0.9.1+5"
 # ╟─90ccb392-2216-11eb-1fd8-83b7d7c16b54
 # ╠═0bf302de-4a0f-4341-b010-d3606e237acc
 # ╟─bef9c2e4-220e-11eb-24d8-bd618d2985ea
-# ╟─17317eb8-22d5-11eb-0f46-2bf1bddd36bb
+# ╠═17317eb8-22d5-11eb-0f46-2bf1bddd36bb
 # ╟─2300b29a-22d5-11eb-3c99-bdec0e5a2685
 # ╟─ae862e10-22d5-11eb-3d75-1d748cf86944
 # ╟─c5bf15b1-a540-478b-acec-1aa47aad13d1
